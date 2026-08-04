@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 220" role="img" aria-label="Championship trophy">
+  <defs>
+    <linearGradient id="chrome" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#8f98a3"/>
+      <stop offset="0.18" stop-color="#eef2f6"/>
+      <stop offset="0.42" stop-color="#c3ccd6"/>
+      <stop offset="0.6" stop-color="#f6f9fc"/>
+      <stop offset="0.82" stop-color="#aab3bf"/>
+      <stop offset="1" stop-color="#828b96"/>
+    </linearGradient>
+    <linearGradient id="chromeV" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f4f7fa"/>
+      <stop offset="0.5" stop-color="#c7ced7"/>
+      <stop offset="1" stop-color="#9aa3af"/>
+    </linearGradient>
+    <radialGradient id="ball" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0" stop-color="#fbfdff"/>
+      <stop offset="0.45" stop-color="#d5dbe3"/>
+      <stop offset="0.8" stop-color="#aab3bf"/>
+      <stop offset="1" stop-color="#7f8893"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Football on top -->
+  <g transform="rotate(-11 60 46)">
+    <path d="M14,46 Q60,16 106,46 Q60,76 14,46 Z" fill="url(#ball)" stroke="#6f7883" stroke-width="1.5"/>
+    <!-- seam + laces -->
+    <line x1="30" y1="46" x2="90" y2="46" stroke="#7c8591" stroke-width="1.6"/>
+    <line x1="52" y1="40" x2="68" y2="40" stroke="#7c8591" stroke-width="1.6"/>
+    <g stroke="#7c8591" stroke-width="1.4">
+      <line x1="55" y1="37" x2="55" y2="43"/>
+      <line x1="60" y1="36.5" x2="60" y2="43.5"/>
+      <line x1="65" y1="37" x2="65" y2="43"/>
+    </g>
+    <!-- highlight -->
+    <path d="M26,40 Q52,26 80,34" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" opacity="0.7"/>
+  </g>
+
+  <!-- Collar under the ball + neck -->
+  <ellipse cx="60" cy="70" rx="12" ry="4" fill="url(#chrome)" stroke="#7f8893" stroke-width="0.8"/>
+  <path d="M52,70 h16 v18 h-16 z" fill="url(#chrome)"/>
+
+  <!-- Trumpet / tulip stem flaring to the base -->
+  <path d="M53,88
+           C40,104 34,128 30,150
+           C48,158 72,158 90,150
+           C86,128 80,104 67,88 Z"
+        fill="url(#chrome)" stroke="#7f8893" stroke-width="1"/>
+  <!-- inner sheen on the stem -->
+  <path d="M58,92 C50,110 46,130 44,150 C50,152 55,152 58,151 C57,130 58,110 60,92 Z"
+        fill="#ffffff" opacity="0.28"/>
+
+  <!-- Stacked base -->
+  <ellipse cx="60" cy="160" rx="34" ry="8" fill="url(#chromeV)" stroke="#7f8893" stroke-width="1"/>
+  <rect x="34" y="160" width="52" height="12" rx="3" fill="url(#chrome)"/>
+  <ellipse cx="60" cy="172" rx="26" ry="6" fill="url(#chromeV)"/>
+  <rect x="30" y="180" width="60" height="16" rx="4" fill="url(#chrome)" stroke="#7f8893" stroke-width="1"/>
+  <ellipse cx="60" cy="196" rx="42" ry="9" fill="url(#chromeV)" stroke="#7f8893" stroke-width="1"/>
+</svg>

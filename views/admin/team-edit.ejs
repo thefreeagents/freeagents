@@ -100,36 +100,24 @@
      var taxiPlayers = (roster.find(function(r){return r.key==='taxi';}) || {players:[]}).players;
      var ncaaPlayers = (roster.find(function(r){return r.key==='ncaa_player';}) || {players:[]}).players;
      var ncaacPlayers = (roster.find(function(r){return r.key==='ncaa_contract';}) || {players:[]}).players;
-     var taxiFull = counts.taxi >= caps.taxi;
-     var contractFull = counts.contract >= caps.contract;
-     var moveMsg = {
-       dropped:        'Player dropped from the Taxi Squad.',
-       dropped_ncaac:  'Player dropped from NCAA Contracts.',
-       dropped_ncaa:   'Player dropped from NCAA Players.',
-       promoted_ncaac: 'Promoted to NCAA Contracts.',
-       promoted_taxi:  'Promoted to the Taxi Squad.',
-       activated_ncaac:'Activated to NCAA Contracts.',
-       choose_action:  'Please choose Activate, Taxi, or Drop first.',
-       not_eligible:   'That player must be marked eligible first.',
-       taxi_full:      'Taxi Squad is full (max ' + caps.taxi + ').',
-       offer_saved:    'Contract terms saved.',
-       signed:         'Signed as a Contract Player.',
-       contract_full:  'Contract Players is full (max ' + caps.contract + ').',
-       bad_terms:      'Please set valid contract terms (acquisition type, price, and years).',
-       undone:         'Move undone.'
-     };
-     var warnMoves = ['not_eligible','taxi_full','contract_full','bad_terms','choose_action'];
+     var taxiSpots = caps.taxi - counts.taxi;
+     var mbase = '/admin/teams/' + team.id;
 %>
 <div class="card offseason-panel" style="margin-top:26px">
   <h2>Off-Season Moves</h2>
-  <p class="hint" style="margin-top:-6px">Off-Season Mode is <strong>ON</strong>. These buttons take effect immediately.
-    Caps are enforced: max <%= caps.contract %> Contract Players, max <%= caps.taxi %> Taxi Squad players.</p>
+  <p class="hint" style="margin-top:-6px">Choose what to do with each player, then press <strong>Submit</strong> at the
+    bottom to apply every move at once. Nothing changes until you submit, and if any move would break a cap the
+    whole submission is cancelled. Caps: max <%= caps.contract %> Contract Players, max <%= caps.taxi %> Taxi Squad players.</p>
 
-  <% if (move && moveMsg[move]) { %>
-    <div class="flash <%= warnMoves.indexOf(move)>=0 ? 'warn' : '' %>"><%= moveMsg[move] %></div>
+  <% if (typeof osmsg !== 'undefined' && osmsg) { %>
+    <div class="flash <%= oswarn ? 'warn' : '' %>"><%= osmsg %></div>
   <% } %>
 
-  <!-- 1 & 2: Taxi Squad moves ------------------------------------------->
+  <!-- Empty shell form: batch inputs below are linked to it with form="osform-admin"
+       so the standalone "set terms" / "mark eligible" forms can sit inline without nesting. -->
+  <form method="post" action="<%= mbase %>/moves/submit" id="osform-admin" class="osform"></form>
+
+  <!-- Taxi Squad: keep / promote / drop -->
   <div class="os-group">
     <h3>Taxi Squad <span class="cnt"><%= counts.taxi %>/<%= caps.taxi %></span></h3>
     <% if (!taxiPlayers.length) { %>
@@ -138,21 +126,20 @@
       <% taxiPlayers.forEach(function(p){ %>
         <div class="os-row">
           <span class="os-name"><%= p.name %></span>
-          <div class="os-actions">
-            <form method="post" action="/admin/teams/<%= team.id %>/moves/taxi-to-ncaac/<%= p.id %>">
-              <button class="btn small green" type="submit">Promote to NCAA Contracts</button>
-            </form>
-            <form method="post" action="/admin/teams/<%= team.id %>/moves/drop/<%= p.id %>"
-                  onsubmit="return confirm('Drop <%= p.name.replace(/'/g, "\\'") %> from the Taxi Squad?');">
-              <button class="btn small danger" type="submit">Drop</button>
-            </form>
+          <div class="os-choices" role="radiogroup" aria-label="<%= p.name %>">
+            <label class="os-opt"><input form="osform-admin" type="radio" name="taxi_<%= p.id %>" value="keep" checked
+                     data-player="<%= p.name %>" data-move=""> Keep</label>
+            <label class="os-opt"><input form="osform-admin" type="radio" name="taxi_<%= p.id %>" value="promote"
+                     data-player="<%= p.name %>" data-move="promote to NCAA Contracts"> Promote to NCAA Contracts</label>
+            <label class="os-opt danger"><input form="osform-admin" type="radio" name="taxi_<%= p.id %>" value="drop"
+                     data-player="<%= p.name %>" data-move="drop from Taxi Squad"> Drop</label>
           </div>
         </div>
       <% }); %>
     <% } %>
   </div>
 
-  <!-- NCAA Contracts: drop --------------------------------------------->
+  <!-- NCAA Contracts: retain / drop -->
   <div class="os-group">
     <h3>NCAA Contracts</h3>
     <% if (!ncaacPlayers.length) { %>
@@ -161,56 +148,54 @@
       <% ncaacPlayers.forEach(function(p){ %>
         <div class="os-row">
           <span class="os-name"><%= p.name %></span>
-          <div class="os-actions">
-            <form method="post" action="/admin/teams/<%= team.id %>/moves/drop-ncaac/<%= p.id %>"
-                  onsubmit="return confirm('Drop <%= p.name.replace(/'/g, "\\'") %> from NCAA Contracts?');">
-              <button class="btn small danger" type="submit">Drop</button>
-            </form>
+          <div class="os-choices" role="radiogroup" aria-label="<%= p.name %>">
+            <label class="os-opt"><input form="osform-admin" type="radio" name="ncaac_<%= p.id %>" value="keep" checked
+                     data-player="<%= p.name %>" data-move=""> Retain</label>
+            <label class="os-opt danger"><input form="osform-admin" type="radio" name="ncaac_<%= p.id %>" value="drop"
+                     data-player="<%= p.name %>" data-move="drop from NCAA Contracts"> Drop</label>
           </div>
         </div>
       <% }); %>
     <% } %>
   </div>
 
-  <!-- 3: NCAA Players -> Activate / Taxi / Drop ------------------------->
+  <!-- NCAA Players: keep / activate / taxi / drop (choosing one implies eligible) -->
   <div class="os-group">
     <h3>NCAA Players</h3>
-    <p class="hint">Mark a player <strong>eligible</strong>, then choose <strong>Activate</strong>
-      (to NCAA Contracts), <strong>Taxi</strong> (Taxi Squad), or <strong>Drop</strong>. Taxi Squad has
-      <%= caps.taxi - counts.taxi %> open spot<%= (caps.taxi - counts.taxi)===1 ? '' : 's' %>.</p>
+    <p class="hint">Pick <strong>Activate</strong> (to NCAA Contracts), <strong>Taxi</strong> (Taxi Squad),
+      or <strong>Drop</strong> for any player — choosing a move makes them eligible automatically on submit.
+      Use <strong>Mark eligible</strong> only to let a team make the choice themselves on their own page.
+      Taxi Squad has <%= taxiSpots %> open spot<%= taxiSpots === 1 ? '' : 's' %>.</p>
     <% if (!ncaaPlayers.length) { %>
       <p class="os-empty">No NCAA Players.</p>
     <% } else { %>
       <% ncaaPlayers.forEach(function(p){ %>
         <div class="os-row">
-          <span class="os-name">
-            <%= p.name %>
-            <% if (p.eligible) { %><span class="tag ok">eligible</span><% } %>
-          </span>
-          <div class="os-actions">
-            <form method="post" action="/admin/teams/<%= team.id %>/moves/eligible/<%= p.id %>">
-              <button class="btn small gray" type="submit"><%= p.eligible ? 'Unmark eligible' : 'Mark eligible' %></button>
-            </form>
-            <% if (p.eligible) { %>
-              <form method="post" action="/admin/teams/<%= team.id %>/moves/ncaa-eligible/<%= p.id %>" class="os-choose"
-                    onsubmit="var c=this.querySelector('input[name=action]:checked'); if(c&&c.value==='drop'){return confirm('Drop <%= p.name.replace(/'/g, "\\'") %> from NCAA Players?');} return true;">
-                <label class="os-opt"><input type="radio" name="action" value="activate" required> Activate</label>
-                <label class="os-opt"><input type="radio" name="action" value="taxi" <%= taxiFull ? 'disabled' : '' %>> Taxi<%= taxiFull ? ' (full)' : '' %></label>
-                <label class="os-opt"><input type="radio" name="action" value="drop"> Drop</label>
-                <button class="btn small green" type="submit">Apply</button>
-              </form>
-            <% } %>
+          <span class="os-name"><%= p.name %>
+            <% if (p.eligible) { %><span class="tag ok">eligible</span><% } %></span>
+          <div class="os-choices" role="radiogroup" aria-label="<%= p.name %>">
+            <label class="os-opt"><input form="osform-admin" type="radio" name="ncaa_<%= p.id %>" value="keep" checked
+                     data-player="<%= p.name %>" data-move=""> Keep</label>
+            <label class="os-opt"><input form="osform-admin" type="radio" name="ncaa_<%= p.id %>" value="activate"
+                     data-player="<%= p.name %>" data-move="activate to NCAA Contracts"> Activate</label>
+            <label class="os-opt"><input form="osform-admin" type="radio" name="ncaa_<%= p.id %>" value="taxi"
+                     data-player="<%= p.name %>" data-move="promote to Taxi Squad"> Taxi</label>
+            <label class="os-opt danger"><input form="osform-admin" type="radio" name="ncaa_<%= p.id %>" value="drop"
+                     data-player="<%= p.name %>" data-move="drop from NCAA Players"> Drop</label>
           </div>
+          <form method="post" action="<%= mbase %>/moves/eligible/<%= p.id %>" class="os-elig">
+            <button class="btn small gray" type="submit"><%= p.eligible ? 'Unmark eligible' : 'Mark eligible' %></button>
+          </form>
         </div>
       <% }); %>
     <% } %>
   </div>
 
-  <!-- 4: Sign from ESPN -> Contract Players ----------------------------->
+  <!-- Sign from ESPN -> Contract Players -->
   <div class="os-group">
     <h3>Sign from ESPN → Contract Players <span class="cnt"><%= counts.contract %>/<%= caps.contract %></span></h3>
-    <p class="hint">Set the available terms for a player, then sign. <strong>Auction:</strong> 1–3 years at the auction price.
-      <strong>Waiver:</strong> 1–2 years at $11 / $15. <% if (contractFull) { %><span class="tag warn">roster full</span><% } %></p>
+    <p class="hint">Set the available terms for a player (immediate), then check them to sign on submit.
+      <strong>Auction:</strong> 1–3 years at the auction price. <strong>Waiver:</strong> 1–2 years at $11 / $15.</p>
     <% if (!espnPlayers.length) { %>
       <p class="os-empty">No players on the ESPN list. Run an ESPN Sync first, or all ESPN players are already categorized.</p>
     <% } else { %>
@@ -221,12 +206,23 @@
       %>
         <div class="os-espn">
           <div class="os-espn-head">
-            <span class="os-name"><%= p.name %></span>
+            <label class="os-sign-check">
+              <input form="osform-admin" type="checkbox" name="sign_<%= p.id %>" value="1" <%= offer ? '' : 'disabled' %>
+                     data-player="<%= p.name %>" data-move="sign to Contract Players">
+              <span class="os-name"><%= p.name %></span>
+            </label>
             <% if (offer) { %><span class="tag ok"><%= offSummary(offer.acq_type, offer.auction_price) %></span><% } else { %><span class="tag">no terms set</span><% } %>
+            <% if (offer) { %>
+              <label class="os-years">Years
+                <select form="osform-admin" name="years_<%= p.id %>">
+                  <% for (var y=1; y<=yrs; y++){ %><option value="<%= y %>"><%= y %></option><% } %>
+                </select>
+              </label>
+            <% } %>
           </div>
 
-          <!-- Set / update available contract terms -->
-          <form method="post" action="/admin/teams/<%= team.id %>/moves/offer" class="os-offer" oninput="osToggle(this)">
+          <!-- Set / update available contract terms (immediate, standalone form) -->
+          <form method="post" action="<%= mbase %>/moves/offer" class="os-offer" oninput="osToggle(this)">
             <input type="hidden" name="player_name" value="<%= p.name %>" />
             <label>Acquired via
               <select name="acq_type">
@@ -239,21 +235,21 @@
             </label>
             <button class="btn small" type="submit">Save terms</button>
           </form>
-
-          <!-- Sign at the saved terms -->
-          <form method="post" action="/admin/teams/<%= team.id %>/moves/sign" class="os-sign">
-            <input type="hidden" name="player_name" value="<%= p.name %>" />
-            <label>Years
-              <select name="years">
-                <% for (var y=1; y<=yrs; y++){ %><option value="<%= y %>"><%= y %></option><% } %>
-              </select>
-            </label>
-            <button class="btn small green" type="submit" <%= (!offer || contractFull) ? 'disabled' : '' %>>Sign as Contract Player</button>
-            <% if (!offer) { %><span class="hint">set terms first</span><% } %>
-          </form>
         </div>
       <% }); %>
     <% } %>
+  </div>
+
+  <!-- Live "what will happen" summary -->
+  <div class="os-pending" id="os-pending" hidden>
+    <h3>Pending moves <span class="cnt" id="os-pending-count">0</span></h3>
+    <ul id="os-pending-list"></ul>
+  </div>
+  <p class="os-pending-empty" id="os-pending-empty">No moves selected yet.</p>
+
+  <div class="os-submitbar">
+    <button class="btn green" form="osform-admin" type="submit" id="os-submit" disabled>Submit moves</button>
+    <button class="btn gray" type="button" id="os-reset">Clear selections</button>
   </div>
 </div>
 
@@ -264,27 +260,94 @@
     var price = form.querySelector('.os-price');
     if (price) price.style.display = (acq === 'waiver') ? 'none' : '';
   }
+
+  // Batch "Pending moves" summary. Inputs are linked via form="osform-admin", so
+  // read them from form.elements (they live outside the form element in the DOM).
+  (function(){
+    var form = document.getElementById('osform-admin');
+    if (!form) return;
+    var listEl  = document.getElementById('os-pending-list');
+    var wrapEl  = document.getElementById('os-pending');
+    var emptyEl = document.getElementById('os-pending-empty');
+    var countEl = document.getElementById('os-pending-count');
+    var submit  = document.getElementById('os-submit');
+
+    function selected(){
+      var out = [];
+      Array.prototype.forEach.call(form.elements, function(el){
+        if (!el.dataset || !el.dataset.move) return;
+        if (el.type === 'radio' && el.checked && el.value !== 'keep') {
+          out.push({ el: el, player: el.dataset.player, move: el.dataset.move });
+        } else if (el.type === 'checkbox' && el.checked) {
+          out.push({ el: el, player: el.dataset.player, move: el.dataset.move });
+        }
+      });
+      return out;
+    }
+    function clearOne(item){
+      if (item.el.type === 'checkbox') { item.el.checked = false; }
+      else {
+        Array.prototype.forEach.call(form.elements, function(el){
+          if (el.type === 'radio' && el.name === item.el.name && el.value === 'keep') el.checked = true;
+        });
+      }
+      render();
+    }
+    function render(){
+      var items = selected();
+      listEl.innerHTML = '';
+      items.forEach(function(it){
+        var li = document.createElement('li');
+        var txt = document.createElement('span');
+        txt.textContent = it.player + ' — ' + it.move;
+        var rm = document.createElement('button');
+        rm.type = 'button'; rm.className = 'os-remove'; rm.textContent = 'remove';
+        rm.addEventListener('click', function(){ clearOne(it); });
+        li.appendChild(txt); li.appendChild(rm); listEl.appendChild(li);
+      });
+      countEl.textContent = items.length;
+      wrapEl.hidden = items.length === 0;
+      emptyEl.hidden = items.length !== 0;
+      submit.disabled = items.length === 0;
+    }
+    form.addEventListener('change', render);
+    document.addEventListener('change', function(e){
+      if (e.target && e.target.form === form) render();
+    });
+    document.getElementById('os-reset').addEventListener('click', function(){ form.reset(); render(); });
+    form.addEventListener('submit', function(e){
+      var items = selected();
+      if (!items.length) { e.preventDefault(); return; }
+      if (!confirm('Submit ' + items.length + ' move' + (items.length===1?'':'s') + ' now?')) e.preventDefault();
+    });
+    render();
+  })();
 </script>
 <% } %>
 
-<% if (transactions && transactions.length) { %>
+<% if (typeof txnGroups !== 'undefined' && txnGroups.length) { %>
 <div class="card txn-card" style="margin-top:26px">
-  <h2>Offseason Transactions</h2>
-  <p class="hint" style="margin-top:-6px">A running log of every off-season move for this team.<%= offseasonOn ? ' Use Undo to reverse a move.' : ' Turn on Off-Season Mode to undo a move.' %></p>
+  <h2>Offseason Submissions</h2>
+  <p class="hint" style="margin-top:-6px">Each submission is a group of moves.<%= offseasonOn ? ' Use Undo to reverse a whole submission.' : ' Turn on Off-Season Mode to undo.' %></p>
   <ul class="txn-list">
-    <% transactions.forEach(function(tx){ %>
-      <li class="txn <%= tx.undone ? 'is-undone' : '' %>">
+    <% txnGroups.forEach(function(g){ %>
+      <li class="txn txn-group <%= g.allUndone ? 'is-undone' : '' %>">
         <div class="txn-main">
-          <span class="txn-summary"><%= tx.summary %></span>
-          <span class="txn-date"><%= tx.created_at %></span>
+          <ul class="txn-items">
+            <% g.items.forEach(function(tx){ %>
+              <li class="<%= tx.undone ? 'is-undone' : '' %>"><%= tx.summary %></li>
+            <% }); %>
+          </ul>
+          <span class="txn-date"><%= g.created_at %></span>
         </div>
         <div class="txn-side">
-          <% if (tx.undone) { %>
+          <% if (g.allUndone) { %>
             <span class="tag">undone</span>
           <% } else if (offseasonOn) { %>
-            <form method="post" action="/admin/teams/<%= team.id %>/moves/undo/<%= tx.id %>"
-                  onsubmit="return confirm('Undo this move?');">
-              <button class="btn small gray" type="submit">Undo</button>
+            <% var undoAction = g.batchId != null ? mbase + '/moves/undo-batch/' + g.batchId : mbase + '/moves/undo/' + g.txnId; %>
+            <form method="post" action="<%= undoAction %>"
+                  onsubmit="return confirm('Undo this whole submission and reset the team to how it was before?');">
+              <button class="btn small gray" type="submit">Undo submission</button>
             </form>
           <% } %>
         </div>

@@ -142,7 +142,10 @@ function init() {
     // All-time franchise records (from ESPN league history, or entered by hand).
     "ALTER TABLE teams ADD COLUMN all_time_record TEXT DEFAULT ''",
     "ALTER TABLE teams ADD COLUMN all_time_pf TEXT DEFAULT ''",
-    'ALTER TABLE teams ADD COLUMN all_time_seasons INTEGER DEFAULT 0'
+    'ALTER TABLE teams ADD COLUMN all_time_seasons INTEGER DEFAULT 0',
+    // Off-Season Mode: group all moves from one "Submit" into a single batch so
+    // the whole submission can be undone together (NULL = a legacy single move).
+    'ALTER TABLE transactions ADD COLUMN batch_id INTEGER'
   ]) {
     try { db.exec(stmt); } catch (e) { /* column already exists */ }
   }

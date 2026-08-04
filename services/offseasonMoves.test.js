@@ -182,4 +182,107 @@ espnSync.setSetting('espn_season', '2026');
   ok(dr && dr.section === 'ncaa_player' && dr.eligible === 1, 'undo drop restores eligible ncaa_player');
 })();
 
+const countSection = (teamId, sec) =>
+  db.prepare('SELECT COUNT(*) c FROM players WHERE team_id = ? AND section = ?').get(teamId, sec).c;
+
+// --- 9. Batch submit: many moves applied at once, one batch, one Undo --------
+(() => {
+  const t = newTeam('Batch Submit');
+  const taxiA = addPlayer(t, 'TaxiA', 'taxi');
+  const ncaacA = addPlayer(t, 'NcaacA', 'ncaa_contract', { contracts: '2026: $5' });
+  const prospect = addPlayer(t, 'Prospect', 'ncaa_player', { eligible: true });
+  addPlayer(t, 'FreeAgent', 'espn_active');
+  const faId = db.prepare("SELECT id FROM players WHERE team_id=? AND name='FreeAgent'").get(t).id;
+  moves.saveOffer(t, { player_name: 'FreeAgent', acq_type: 'auction', auction_price: '8' });
+
+  const body = {};
+  body['taxi_' + taxiA] = 'promote';          // Taxi -> NCAA Contracts
+  body['ncaac_' + ncaacA] = 'drop';           // Drop NCAA Contract
+  body['ncaa_' + prospect] = 'activate';      // NCAA Player -> NCAA Contracts
+  body['sign_' + faId] = '1';                 // Sign from ESPN
+  body['years_' + faId] = '1';
+
+  const res = moves.submitMoves(t, body, { isAdmin: false });
+  ok(res.ok && !res.empty, 'batch submit ok');
+  ok(res.applied === 4, 'batch applied 4 moves');
+  ok(section(taxiA).section === 'ncaa_contract', 'taxi promoted in batch');
+  ok(!exists(ncaacA), 'ncaac dropped in batch');
+  ok(section(prospect).section === 'ncaa_contract', 'prospect activated in batch');
+  ok(db.prepare("SELECT 1 FROM players WHERE team_id=? AND name='FreeAgent' AND section='contract'").get(t), 'free agent signed in batch');
+
+  // All four transactions share one batch_id.
+  const rows = db.prepare('SELECT * FROM transactions WHERE team_id = ? AND undone = 0 ORDER BY id').all(t);
+  ok(rows.length === 4, 'four txns logged for the batch');
+  const bid = rows[0].batch_id;
+  ok(bid != null && rows.every(r => r.batch_id === bid), 'all txns share one batch_id');
+
+  // One Undo reverses the whole submission.
+  ok(moves.undoBatch(t, bid) === 'undone', 'undoBatch returns undone');
+  ok(section(taxiA).section === 'taxi', 'undo restored taxi promote');
+  ok(db.prepare("SELECT section FROM players WHERE team_id=? AND name='NcaacA'").get(t).section === 'ncaa_contract', 'undo restored dropped ncaac');
+  ok(section(prospect).section === 'ncaa_player', 'undo restored prospect to ncaa_player');
+  ok(db.prepare("SELECT 1 FROM players WHERE team_id=? AND name='FreeAgent' AND section='espn_active'").get(t), 'undo put free agent back on ESPN list');
+  ok(db.prepare('SELECT COUNT(*) c FROM transactions WHERE team_id=? AND batch_id=? AND undone=0').get(t, bid).c === 0, 'all batch txns marked undone');
+})();
+
+// --- 10. Freeing a slot before filling it in the SAME submit ---------------
+(() => {
+  const t = newTeam('Free Then Fill');
+  // Taxi is full (cap = 2).
+  const keep = addPlayer(t, 'KeepTaxi', 'taxi');
+  const goer = addPlayer(t, 'DropTaxi', 'taxi');
+  const prospect = addPlayer(t, 'Upgrade', 'ncaa_player', { eligible: true });
+  ok(countSection(t, 'taxi') === moves.TAXI_CAP, 'taxi starts full');
+
+  const body = {};
+  body['taxi_' + goer] = 'drop';        // frees a taxi slot (runs first)
+  body['ncaa_' + prospect] = 'taxi';    // fills the freed slot (runs after)
+  const res = moves.submitMoves(t, body, { isAdmin: false });
+  ok(res.ok && res.applied === 2, 'free-then-fill batch succeeds');
+  ok(!exists(goer), 'dropped taxi gone');
+  ok(section(prospect).section === 'taxi', 'prospect promoted into freed taxi slot');
+  ok(countSection(t, 'taxi') === moves.TAXI_CAP, 'taxi still exactly at cap');
+  ok(exists(keep), 'kept taxi untouched');
+})();
+
+// --- 11. Cap exceeded -> whole batch rolls back, nothing changes -----------
+(() => {
+  const t = newTeam('Rollback');
+  addPlayer(t, 'SoloTaxi', 'taxi');                 // taxi = 1 (room for 1)
+  const p1 = addPlayer(t, 'Prospect1', 'ncaa_player', { eligible: true });
+  const p2 = addPlayer(t, 'Prospect2', 'ncaa_player', { eligible: true });
+  const txnsBefore = db.prepare('SELECT COUNT(*) c FROM transactions WHERE team_id=?').get(t).c;
+
+  const body = {};
+  body['ncaa_' + p1] = 'taxi';
+  body['ncaa_' + p2] = 'taxi';   // second promote exceeds TAXI_CAP -> abort all
+  const res = moves.submitMoves(t, body, { isAdmin: false });
+  ok(!res.ok && res.error === 'taxi_full', 'batch fails with taxi_full');
+  ok(section(p1).section === 'ncaa_player', 'first prospect NOT moved (rolled back)');
+  ok(section(p2).section === 'ncaa_player', 'second prospect NOT moved');
+  ok(countSection(t, 'taxi') === 1, 'taxi count unchanged after rollback');
+  ok(db.prepare('SELECT COUNT(*) c FROM transactions WHERE team_id=?').get(t).c === txnsBefore, 'no txns written on rollback');
+})();
+
+// --- 12. Empty submit + groupTransactions ----------------------------------
+(() => {
+  const t = newTeam('Grouping');
+  const empty = moves.submitMoves(t, {}, { isAdmin: false });
+  ok(empty.ok && empty.empty, 'empty submit reported as empty');
+
+  // Two separate submissions -> two groups, newest first.
+  const a = addPlayer(t, 'A', 'taxi');
+  moves.submitMoves(t, { ['taxi_' + a]: 'drop' }, { isAdmin: false });
+  const b = addPlayer(t, 'B', 'taxi');
+  moves.submitMoves(t, { ['taxi_' + b]: 'drop' }, { isAdmin: false });
+
+  const rows = db.prepare('SELECT * FROM transactions WHERE team_id=? ORDER BY id DESC').all(t);
+  const groups = moves.groupTransactions(rows);
+  ok(groups.length === 2, 'two submission groups');
+  ok(groups[0].batchId != null && groups[1].batchId != null, 'groups carry batchIds');
+  ok(groups[0].batchId > groups[1].batchId, 'newest group first');
+  ok(groups.every(g => g.items.length === 1), 'each group has its one move');
+  ok(!groups[0].allUndone, 'active group not marked allUndone');
+})();
+
 console.log(`offseasonMoves.test.js — all ${passed} assertions passed`);

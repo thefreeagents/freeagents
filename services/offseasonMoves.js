@@ -31,12 +31,19 @@ function sectionCount(teamId, section) {
     .get(teamId, section).c;
 }
 
+// When a batch "Submit" is running, every move logged during it is tagged with
+// this shared batch id so the whole submission can be undone as one unit. It is
+// set for the duration of submitMoves() and cleared afterward. Node handles each
+// request synchronously through these (synchronous) SQLite calls, so a simple
+// module-level value is safe here.
+let activeBatch = null;
+
 // Record a completed move in the audit log. `payload` holds whatever is needed
 // to reverse the move; it's stored as JSON so undo() can read it back.
 function logTxn(teamId, kind, playerName, summary, payload) {
   db.prepare(
-    'INSERT INTO transactions (team_id, kind, player_name, summary, payload, undone, created_at) VALUES (?, ?, ?, ?, ?, 0, ?)'
-  ).run(teamId, kind, playerName, summary, JSON.stringify(payload || {}), today());
+    'INSERT INTO transactions (team_id, kind, player_name, summary, payload, undone, batch_id, created_at) VALUES (?, ?, ?, ?, ?, 0, ?, ?)'
+  ).run(teamId, kind, playerName, summary, JSON.stringify(payload || {}), activeBatch, today());
 }
 
 // 1) Drop a Taxi Squad player entirely.
@@ -177,11 +184,10 @@ function signPlayer(teamId, body) {
   return 'signed';
 }
 
-// Undo a completed move. Reverses the specific change and marks the transaction
-// as undone (kept in the log for the audit trail). Returns 'undone' on success.
-function undo(teamId, txnId) {
-  const txn = db.prepare('SELECT * FROM transactions WHERE id = ? AND team_id = ?').get(txnId, teamId);
-  if (!txn || txn.undone) return null;
+// Reverse a single logged transaction and mark it undone (kept in the log for
+// the audit trail). Shared by the single-move undo() and the batch undoBatch().
+function reverseTxn(teamId, txn) {
+  if (!txn || txn.undone) return;
   let data = {};
   try { data = JSON.parse(txn.payload || '{}'); } catch (e) { data = {}; }
 
@@ -215,6 +221,179 @@ function undo(teamId, txnId) {
   }
 
   db.prepare('UPDATE transactions SET undone = 1 WHERE id = ?').run(txn.id);
+}
+
+// Undo one completed move by its transaction id (legacy single-move undo, kept
+// for any pre-batch log rows). Returns 'undone' on success.
+function undo(teamId, txnId) {
+  const txn = db.prepare('SELECT * FROM transactions WHERE id = ? AND team_id = ?').get(txnId, teamId);
+  if (!txn || txn.undone) return null;
+  reverseTxn(teamId, txn);
+  return 'undone';
+}
+
+// ---------------------------------------------------------------------------
+// Batch submit + batch undo
+//
+// The team page shows one big form: a choice for every player (Taxi: keep /
+// promote / drop; NCAA Contracts: keep / drop; eligible NCAA Players: keep /
+// activate / taxi / drop) plus which ESPN players to sign. A single "Submit"
+// applies them ALL AT ONCE inside one database transaction, so the roster caps
+// (max 6 Contract, max 2 Taxi) are enforced against the final result — if any
+// single move would break a rule, nothing is applied and the team is left
+// exactly as it was. A matching "Undo" reverses the whole submission.
+// ---------------------------------------------------------------------------
+
+// Result codes that mean "this move can't be applied" -> abort the whole batch.
+const FAILURES = new Set(['taxi_full', 'contract_full', 'not_eligible', 'bad_terms', 'choose_action']);
+
+// Turn the submitted form body into an ordered list of moves. Anything left on
+// its default ("keep"/unchecked) is simply ignored.
+function collectMoves(body) {
+  const list = [];
+  for (const k of Object.keys(body || {})) {
+    let m;
+    const v = body[k];
+    if ((m = /^taxi_(\d+)$/.exec(k)) && v && v !== 'keep') {
+      list.push({ type: 'taxi', pid: parseInt(m[1], 10), action: v });
+    } else if ((m = /^ncaac_(\d+)$/.exec(k)) && v && v !== 'keep') {
+      list.push({ type: 'ncaac', pid: parseInt(m[1], 10), action: v });
+    } else if ((m = /^ncaa_(\d+)$/.exec(k)) && v && v !== 'keep') {
+      list.push({ type: 'ncaa', pid: parseInt(m[1], 10), action: v });
+    } else if ((m = /^sign_(\d+)$/.exec(k)) && (v === '1' || v === 'on' || v === true)) {
+      list.push({ type: 'sign', pid: parseInt(m[1], 10), years: body['years_' + m[1]] });
+    }
+  }
+  // Order so slot-FREEING moves run before slot-FILLING moves; that way a team
+  // can, in one submit, drop a Taxi player and promote another into the freed
+  // spot without tripping the cap.
+  const rank = (mv) => {
+    if (mv.type === 'taxi') return 1;            // drop / promote-out of Taxi
+    if (mv.type === 'ncaac' && mv.action === 'drop') return 1;
+    if (mv.type === 'ncaa' && mv.action === 'drop') return 2;
+    if (mv.type === 'ncaa' && mv.action === 'activate') return 2; // into NCAA Contracts (uncapped)
+    if (mv.type === 'ncaa' && mv.action === 'taxi') return 3;     // into Taxi (capped)
+    if (mv.type === 'sign') return 4;            // into Contract (capped)
+    return 5;
+  };
+  list.sort((a, b) => rank(a) - rank(b));
+  return list;
+}
+
+// Apply a single collected move, recording the player's display name on the
+// move (for error messages). Returns the underlying result code.
+function execMove(teamId, mv, opts) {
+  const p = teamPlayer(teamId, mv.pid);
+  if (p) mv._name = p.name;
+
+  if (mv.type === 'sign') {
+    if (!p || p.section !== 'espn_active') return null;
+    return signPlayer(teamId, { player_name: p.name, years: mv.years });
+  }
+  if (mv.type === 'taxi') {
+    if (mv.action === 'promote') return taxiToNcaac(teamId, mv.pid);
+    if (mv.action === 'drop') return dropTaxi(teamId, mv.pid);
+    return null;
+  }
+  if (mv.type === 'ncaac') {
+    if (mv.action === 'drop') return dropNcaac(teamId, mv.pid);
+    return null;
+  }
+  if (mv.type === 'ncaa') {
+    // On the commissioner (admin) page the choice itself implies eligibility, so
+    // mark the player eligible first; the public page only ever shows choices
+    // for players the commissioner already made eligible.
+    if (opts && opts.isAdmin && p && p.section === 'ncaa_player' && !p.eligible) {
+      db.prepare("UPDATE players SET eligible = 1 WHERE id = ? AND team_id = ?").run(mv.pid, teamId);
+    }
+    return ncaaEligibleMove(teamId, mv.pid, mv.action);
+  }
+  return null;
+}
+
+function failMessage(code, name) {
+  const who = name ? `"${name}"` : 'a player';
+  switch (code) {
+    case 'taxi_full': return `That would put more than ${TAXI_CAP} players on the Taxi Squad (stopped at ${who}). Nothing was changed.`;
+    case 'contract_full': return `That would sign more than ${CONTRACT_CAP} Contract Players (stopped at ${who}). Nothing was changed.`;
+    case 'bad_terms': return `Contract terms for ${who} aren't set correctly (price / years). Nothing was changed.`;
+    case 'not_eligible': return `${who} isn't eligible for that move yet. Nothing was changed.`;
+    case 'choose_action': return `Please choose an action for ${who}. Nothing was changed.`;
+    default: return 'That submission could not be completed, so nothing was changed.';
+  }
+}
+
+// Apply every chosen move at once. Returns:
+//   { ok:true, empty:true }                      -> nothing was selected
+//   { ok:true, batchId, applied }                -> all moves applied
+//   { ok:false, error, message, player }         -> a rule was hit; NOTHING applied
+function submitMoves(teamId, body, opts) {
+  const list = collectMoves(body);
+  if (!list.length) return { ok: true, empty: true, applied: 0 };
+
+  const batchId = db.prepare('SELECT COALESCE(MAX(batch_id), 0) + 1 AS n FROM transactions').get().n;
+
+  db.exec('BEGIN');
+  activeBatch = batchId;
+  try {
+    for (const mv of list) {
+      const res = execMove(teamId, mv, opts);
+      if (FAILURES.has(res)) {
+        db.exec('ROLLBACK');
+        activeBatch = null;
+        return { ok: false, error: res, player: mv._name || '', message: failMessage(res, mv._name) };
+      }
+    }
+    db.exec('COMMIT');
+  } catch (e) {
+    try { db.exec('ROLLBACK'); } catch (_) { /* ignore */ }
+    activeBatch = null;
+    return { ok: false, error: 'exception', message: 'Something went wrong applying the moves, so nothing was changed.' };
+  }
+  activeBatch = null;
+  return { ok: true, batchId, applied: list.length };
+}
+
+// Group audit-log rows (ordered newest-first) into submissions for display.
+// Each batch becomes one group with a single Undo; legacy pre-batch rows (no
+// batch_id) each stand alone. Returns groups newest-first, items chronological.
+function groupTransactions(rows) {
+  const groups = [];
+  const byBatch = new Map();
+  for (const t of rows || []) {
+    if (t.batch_id == null) {
+      groups.push({ batchId: null, txnId: t.id, created_at: t.created_at, items: [t], allUndone: !!t.undone });
+    } else {
+      let g = byBatch.get(t.batch_id);
+      if (!g) {
+        g = { batchId: t.batch_id, txnId: null, created_at: t.created_at, items: [], allUndone: true };
+        byBatch.set(t.batch_id, g);
+        groups.push(g);
+      }
+      g.items.push(t);
+      if (!t.undone) g.allUndone = false;
+    }
+  }
+  for (const g of groups) g.items.reverse(); // show moves in the order they happened
+  return groups;
+}
+
+// Undo an entire submitted batch: reverse every move in it (newest first) and
+// mark them undone. Returns 'undone' on success, null if nothing to undo.
+function undoBatch(teamId, batchId) {
+  const txns = db.prepare(
+    'SELECT * FROM transactions WHERE team_id = ? AND batch_id = ? AND undone = 0 ORDER BY id DESC'
+  ).all(teamId, parseInt(batchId, 10));
+  if (!txns.length) return null;
+
+  db.exec('BEGIN');
+  try {
+    for (const t of txns) reverseTxn(teamId, t);
+    db.exec('COMMIT');
+  } catch (e) {
+    try { db.exec('ROLLBACK'); } catch (_) { /* ignore */ }
+    return null;
+  }
   return 'undone';
 }
 
@@ -231,6 +410,10 @@ module.exports = {
   saveOffer,
   signPlayer,
   undo,
+  submitMoves,
+  undoBatch,
+  collectMoves,
+  groupTransactions,
   CONTRACT_CAP,
   TAXI_CAP
 };

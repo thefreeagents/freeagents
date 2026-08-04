@@ -46,13 +46,15 @@ router.get('/team/:slug', (req, res) => {
   };
 
   res.render('team', {
-    team, roster, champs, transactions, active: 'teams',
+    team, roster, champs, transactions,
+    txnGroups: moves.groupTransactions(transactions), active: 'teams',
     offseasonOn, espnPlayers, offers, counts,
     caps: { contract: CONTRACT_CAP, taxi: TAXI_CAP },
     startYear: espnSync.currentSeason(),
     offSummary: offseason.offerSummary,
     maxYears: offseason.maxYears,
-    move: req.query.move || null
+    osmsg: req.query.osmsg || null,
+    oswarn: req.query.oswarn === '1'
   });
 });
 
@@ -65,37 +67,32 @@ function requireOffseason(req, res, next) {
   req.team = team;
   next();
 }
-const backToTeam = (res, slug, move) =>
-  res.redirect('/team/' + slug + (move ? '?move=' + move : ''));
+const backToTeamMsg = (res, slug, r) =>
+  res.redirect('/team/' + slug + osQuery(r));
 
-router.post('/team/:slug/moves/drop/:pid', requireOffseason, (req, res) => {
-  backToTeam(res, req.team.slug, moves.dropTaxi(req.team.id, req.params.pid));
+// Build the ?osmsg=...&oswarn=... flash query from a submit/undo result.
+function osQuery(r) {
+  let msg, warn = 0;
+  if (r.undo) msg = 'Submission undone — the team was reset to how it was before.';
+  else if (r.empty) msg = 'No moves were selected — nothing to submit.';
+  else if (r.ok) msg = 'Submitted ' + r.applied + ' move' + (r.applied === 1 ? '' : 's') + '.';
+  else { msg = r.message || 'Nothing was changed.'; warn = 1; }
+  return '?osmsg=' + encodeURIComponent(msg) + (warn ? '&oswarn=1' : '');
+}
+
+// One "Submit" applies every chosen move at once (caps enforced together).
+router.post('/team/:slug/moves/submit', requireOffseason, (req, res) => {
+  backToTeamMsg(res, req.team.slug, moves.submitMoves(req.team.id, req.body, { isAdmin: false }));
 });
-router.post('/team/:slug/moves/taxi-to-ncaac/:pid', requireOffseason, (req, res) => {
-  backToTeam(res, req.team.slug, moves.taxiToNcaac(req.team.id, req.params.pid));
+// One "Undo" reverses an entire submitted batch back to the prior state.
+router.post('/team/:slug/moves/undo-batch/:batchId', requireOffseason, (req, res) => {
+  const code = moves.undoBatch(req.team.id, req.params.batchId);
+  backToTeamMsg(res, req.team.slug, code ? { ok: true, undo: true } : { ok: false, message: 'Nothing to undo.' });
 });
-// Note: marking a player eligible is a COMMISSIONER-ONLY action, so there is
-// deliberately no public 'eligible' route here (see routes/admin.js). Team
-// pages can only promote players the commissioner has already marked eligible.
-router.post('/team/:slug/moves/ncaa-to-taxi/:pid', requireOffseason, (req, res) => {
-  backToTeam(res, req.team.slug, moves.ncaaToTaxi(req.team.id, req.params.pid));
-});
-// Eligible NCAA Player: the team must choose Activate / Taxi / Drop.
-router.post('/team/:slug/moves/ncaa-eligible/:pid', requireOffseason, (req, res) => {
-  backToTeam(res, req.team.slug, moves.ncaaEligibleMove(req.team.id, req.params.pid, req.body.action));
-});
-router.post('/team/:slug/moves/drop-ncaac/:pid', requireOffseason, (req, res) => {
-  backToTeam(res, req.team.slug, moves.dropNcaac(req.team.id, req.params.pid));
-});
-// Note: setting a player's contract terms (the "offer") is a COMMISSIONER-ONLY
-// action, so there is deliberately no public 'offer' route here (see
-// routes/admin.js). Team pages can only sign a player on terms the commissioner
-// has already set — the team still chooses the number of years.
-router.post('/team/:slug/moves/sign', requireOffseason, (req, res) => {
-  backToTeam(res, req.team.slug, moves.signPlayer(req.team.id, req.body));
-});
+// Legacy single-move undo (for any pre-batch log rows).
 router.post('/team/:slug/moves/undo/:txnId', requireOffseason, (req, res) => {
-  backToTeam(res, req.team.slug, moves.undo(req.team.id, req.params.txnId));
+  const code = moves.undo(req.team.id, req.params.txnId);
+  backToTeamMsg(res, req.team.slug, code ? { ok: true, undo: true } : { ok: false, message: 'Nothing to undo.' });
 });
 
 // Old bookmark support: /rules -> /page/rules

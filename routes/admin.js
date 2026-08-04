@@ -104,11 +104,13 @@ router.get('/teams/:id', requireAdmin, (req, res) => {
   res.render('admin/team-edit', {
     team, roster, sections: SECTIONS, flash: req.query.saved,
     offseasonOn, espnPlayers, offers, transactions,
+    txnGroups: moves.groupTransactions(transactions),
     counts, caps: { contract: CONTRACT_CAP, taxi: TAXI_CAP },
     startYear: espnSync.currentSeason(),
     offSummary: offseason.offerSummary,
     maxYears: offseason.maxYears,
-    move: req.query.move || null
+    osmsg: req.query.osmsg || null,
+    oswarn: req.query.oswarn === '1'
   });
 });
 
@@ -206,6 +208,19 @@ function requireOffseason(req, res, next) {
 }
 const backToTeam = (res, id, move) =>
   res.redirect('/admin/teams/' + id + (move ? '?move=' + move : ''));
+const backToTeamMsg = (res, id, r) =>
+  res.redirect('/admin/teams/' + id + osQuery(r));
+
+// Build the ?osmsg=...&oswarn=... flash query from a submit/undo result.
+function osQuery(r) {
+  let msg, warn = 0;
+  if (r.undo) msg = 'Submission undone — the team was reset to how it was before.';
+  else if (r.saved) msg = 'Contract terms saved.';
+  else if (r.empty) msg = 'No moves were selected — nothing to submit.';
+  else if (r.ok) msg = 'Submitted ' + r.applied + ' move' + (r.applied === 1 ? '' : 's') + '.';
+  else { msg = r.message || 'Nothing was changed.'; warn = 1; }
+  return '?osmsg=' + encodeURIComponent(msg) + (warn ? '&oswarn=1' : '');
+}
 
 // Toggle the mode on/off.
 router.post('/offseason/toggle', requireAdmin, (req, res) => {
@@ -213,49 +228,35 @@ router.post('/offseason/toggle', requireAdmin, (req, res) => {
   res.redirect(req.get('Referer') || '/admin');
 });
 
-// 1) Drop a Taxi Squad player entirely.
-router.post('/teams/:id/moves/drop/:pid', requireAdmin, requireOffseason, (req, res) => {
-  backToTeam(res, req.params.id, moves.dropTaxi(req.params.id, req.params.pid));
+// One "Submit" applies every chosen move at once (caps enforced together).
+router.post('/teams/:id/moves/submit', requireAdmin, requireOffseason, (req, res) => {
+  backToTeamMsg(res, req.params.id, moves.submitMoves(req.params.id, req.body, { isAdmin: true }));
 });
 
-// 2) Promote a Taxi Squad player to NCAA Contracts.
-router.post('/teams/:id/moves/taxi-to-ncaac/:pid', requireAdmin, requireOffseason, (req, res) => {
-  backToTeam(res, req.params.id, moves.taxiToNcaac(req.params.id, req.params.pid));
+// One "Undo" reverses an entire submitted batch back to the prior state.
+router.post('/teams/:id/moves/undo-batch/:batchId', requireAdmin, requireOffseason, (req, res) => {
+  const code = moves.undoBatch(req.params.id, req.params.batchId);
+  backToTeamMsg(res, req.params.id, code ? { ok: true, undo: true } : { ok: false, message: 'Nothing to undo.' });
 });
 
-// 3a) Toggle whether an NCAA Player is eligible to be promoted to the Taxi Squad.
-router.post('/teams/:id/moves/eligible/:pid', requireAdmin, requireOffseason, (req, res) => {
-  backToTeam(res, req.params.id, moves.toggleEligible(req.params.id, req.params.pid));
-});
-
-// 3b) Promote an eligible NCAA Player to the Taxi Squad (cap enforced in module).
-router.post('/teams/:id/moves/ncaa-to-taxi/:pid', requireAdmin, requireOffseason, (req, res) => {
-  backToTeam(res, req.params.id, moves.ncaaToTaxi(req.params.id, req.params.pid));
-});
-
-// 3c) Eligible NCAA Player: choose Activate / Taxi / Drop (validated in module).
-router.post('/teams/:id/moves/ncaa-eligible/:pid', requireAdmin, requireOffseason, (req, res) => {
-  backToTeam(res, req.params.id, moves.ncaaEligibleMove(req.params.id, req.params.pid, req.body.action));
-});
-
-// 5) Drop an NCAA Contract player entirely.
-router.post('/teams/:id/moves/drop-ncaac/:pid', requireAdmin, requireOffseason, (req, res) => {
-  backToTeam(res, req.params.id, moves.dropNcaac(req.params.id, req.params.pid));
-});
-
-// 4a) Save/update the available contract offer for an ESPN-listed player.
-router.post('/teams/:id/moves/offer', requireAdmin, requireOffseason, (req, res) => {
-  backToTeam(res, req.params.id, moves.saveOffer(req.params.id, req.body));
-});
-
-// 4b) Sign an ESPN-listed player as a new Contract Player (cap enforced in module).
-router.post('/teams/:id/moves/sign', requireAdmin, requireOffseason, (req, res) => {
-  backToTeam(res, req.params.id, moves.signPlayer(req.params.id, req.body));
-});
-
-// Undo a completed off-season move.
+// Legacy single-move undo (for any pre-batch log rows).
 router.post('/teams/:id/moves/undo/:txnId', requireAdmin, requireOffseason, (req, res) => {
-  backToTeam(res, req.params.id, moves.undo(req.params.id, req.params.txnId));
+  const code = moves.undo(req.params.id, req.params.txnId);
+  backToTeamMsg(res, req.params.id, code ? { ok: true, undo: true } : { ok: false, message: 'Nothing to undo.' });
+});
+
+// Commissioner-only: mark/unmark an NCAA Player eligible (immediate — this just
+// unlocks the batch choices for that player; it isn't itself an undoable move).
+router.post('/teams/:id/moves/eligible/:pid', requireAdmin, requireOffseason, (req, res) => {
+  moves.toggleEligible(req.params.id, req.params.pid);
+  backToTeam(res, req.params.id);
+});
+
+// Commissioner-only: save/update the contract offer terms for an ESPN player
+// (immediate — sets the price/type a team can then sign on within a batch).
+router.post('/teams/:id/moves/offer', requireAdmin, requireOffseason, (req, res) => {
+  moves.saveOffer(req.params.id, req.body);
+  backToTeamMsg(res, req.params.id, { ok: true, saved: true });
 });
 
 // ---- Pages (menu) manager -------------------------------------------------

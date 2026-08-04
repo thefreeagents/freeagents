@@ -112,11 +112,23 @@ async function syncLeague() {
     updTeam.run(et.record, et.pointsFor != null ? String(et.pointsFor) : '', today, st.id);
 
     // All-time record for this franchise (matched by ESPN team id).
+    //
+    // Only write when we actually have completed-season history. In the preseason
+    // the current-season payload carries 0-0 records, and if the league-history
+    // feed comes back empty the aggregate would be all zeros — writing that would
+    // stamp a bogus "0-0" onto every team. So we require at least one played
+    // season (or any wins/losses/ties) before touching the stored values.
     const at = allTime[String(st.espn_team_id)] || allTime[st.espn_team_id];
     let allTimeStr = '';
-    if (at) {
+    const hasHistory = at && (at.seasons > 0 || (at.wins + at.losses + at.ties) > 0);
+    if (hasHistory) {
       allTimeStr = formatRecord(at);
       updAllTime.run(allTimeStr, String(Math.round(at.pointsFor * 10) / 10), at.seasons, st.id);
+    } else if (/^0-0(-0)?$/.test((st.all_time_record || '').trim()) && !st.all_time_seasons) {
+      // No real history available yet — clear a previously auto-written "0-0" so
+      // the team page hides the empty all-time block instead of showing 0-0.
+      // (A manually-entered record won't match this pattern, so it's left alone.)
+      updAllTime.run('', '', 0, st.id);
     }
 
     report.teams.push({

@@ -12,7 +12,7 @@
   <% if (team.tagline) { %><p class="team-tagline"><%= team.tagline %></p><% } %>
   <% if (champs.length) { %>
     <div class="trophies">
-      <% champs.forEach(function(y){ %><span class="trophy">🏆<em><%= y %></em></span><% }); %>
+      <% champs.forEach(function(y){ %><span class="trophy"><img class="trophy-img" src="/img/trophy.svg" alt="Championship trophy" /><em><%= y %></em></span><% }); %>
     </div>
   <% } %>
 </div>
@@ -74,165 +74,239 @@
      var taxiPlayers  = (roster.find(function(r){return r.key==='taxi';}) || {players:[]}).players;
      var ncaaPlayers  = (roster.find(function(r){return r.key==='ncaa_player';}) || {players:[]}).players;
      var ncaacPlayers = (roster.find(function(r){return r.key==='ncaa_contract';}) || {players:[]}).players;
-     var taxiFull = counts.taxi >= caps.taxi;
-     var contractFull = counts.contract >= caps.contract;
-     var moveMsg = {
-       dropped:        'Player dropped from the Taxi Squad.',
-       dropped_ncaac:  'Player dropped from NCAA Contracts.',
-       dropped_ncaa:   'Player dropped from NCAA Players.',
-       promoted_ncaac: 'Promoted to NCAA Contracts.',
-       promoted_taxi:  'Promoted to the Taxi Squad.',
-       activated_ncaac:'Activated to NCAA Contracts.',
-       choose_action:  'Please choose Activate, Taxi, or Drop first.',
-       not_eligible:   'That player must be marked eligible first.',
-       taxi_full:      'Taxi Squad is full (max ' + caps.taxi + ').',
-       offer_saved:    'Contract terms saved.',
-       signed:         'Signed as a Contract Player.',
-       contract_full:  'Contract Players is full (max ' + caps.contract + ').',
-       bad_terms:      'Please set valid contract terms (acquisition type, price, and years).',
-       undone:         'Move undone.'
-     };
-     var warnMoves = ['not_eligible','taxi_full','contract_full','bad_terms','choose_action'];
+     // Public page: only players the commissioner already marked eligible get a choice.
+     var eligNcaa = ncaaPlayers.filter(function(p){ return p.eligible; });
+     var taxiSpots = caps.taxi - counts.taxi;
 %>
-<section class="offseason-panel">
+<section class="offseason-panel" id="offseason">
   <h3 class="os-heading">Off-Season Moves</h3>
-  <p class="os-note">Off-Season Mode is <strong>ON</strong>. These buttons take effect immediately.
-    Caps: max <%= caps.contract %> Contract Players, max <%= caps.taxi %> Taxi Squad players.</p>
+  <p class="os-note">Choose what to do with each player, then press <strong>Submit</strong> at the bottom
+    to make all the moves at once. Nothing changes until you submit. Caps:
+    max <%= caps.contract %> Contract Players, max <%= caps.taxi %> Taxi Squad players.</p>
 
-  <% if (move && moveMsg[move]) { %>
-    <div class="os-flash <%= warnMoves.indexOf(move)>=0 ? 'warn' : '' %>"><%= moveMsg[move] %></div>
+  <% if (typeof osmsg !== 'undefined' && osmsg) { %>
+    <div class="os-flash <%= oswarn ? 'warn' : '' %>"><%= osmsg %></div>
   <% } %>
 
-  <!-- Taxi Squad moves -->
-  <div class="os-group">
-    <h4>Taxi Squad <span class="cnt"><%= counts.taxi %>/<%= caps.taxi %></span></h4>
-    <% if (!taxiPlayers.length) { %>
-      <p class="os-empty">No Taxi Squad players.</p>
-    <% } else { %>
-      <% taxiPlayers.forEach(function(p){ %>
-        <div class="os-row">
-          <span class="os-name"><%= p.name %></span>
-          <div class="os-actions">
-            <form method="post" action="<%= actionBase %>/moves/taxi-to-ncaac/<%= p.id %>">
-              <button class="btn small green" type="submit">Promote to NCAA Contracts</button>
-            </form>
-            <form method="post" action="<%= actionBase %>/moves/drop/<%= p.id %>"
-                  onsubmit="return confirm('Drop <%= p.name.replace(/'/g, "\\'") %> from the Taxi Squad?');">
-              <button class="btn small danger" type="submit">Drop</button>
-            </form>
-          </div>
-        </div>
-      <% }); %>
-    <% } %>
-  </div>
+  <form method="post" action="<%= actionBase %>/moves/submit" id="osform" class="osform">
 
-  <!-- NCAA Contracts: drop -->
-  <div class="os-group">
-    <h4>NCAA Contracts</h4>
-    <% if (!ncaacPlayers.length) { %>
-      <p class="os-empty">No NCAA Contract players.</p>
-    <% } else { %>
-      <% ncaacPlayers.forEach(function(p){ %>
-        <div class="os-row">
-          <span class="os-name"><%= p.name %></span>
-          <div class="os-actions">
-            <form method="post" action="<%= actionBase %>/moves/drop-ncaac/<%= p.id %>"
-                  onsubmit="return confirm('Drop <%= p.name.replace(/'/g, "\\'") %> from NCAA Contracts?');">
-              <button class="btn small danger" type="submit">Drop</button>
-            </form>
-          </div>
-        </div>
-      <% }); %>
-    <% } %>
-  </div>
-
-  <!-- NCAA Players -> Activate / Taxi / Drop -->
-  <div class="os-group">
-    <h4>NCAA Players</h4>
-    <p class="os-note">The commissioner marks a player <strong>eligible</strong>; once eligible you choose
-      what happens to them — <strong>Activate</strong> to NCAA Contracts, move to the <strong>Taxi
-      Squad</strong>, or <strong>Drop</strong> them. Taxi Squad has
-      <%= caps.taxi - counts.taxi %> open spot<%= (caps.taxi - counts.taxi)===1 ? '' : 's' %>.</p>
-    <% if (!ncaaPlayers.length) { %>
-      <p class="os-empty">No NCAA Players.</p>
-    <% } else { %>
-      <% ncaaPlayers.forEach(function(p){ %>
-        <div class="os-row">
-          <span class="os-name">
-            <%= p.name %>
-            <% if (p.eligible) { %><span class="tag ok">eligible</span>
-            <% } else { %><span class="tag">not eligible yet</span><% } %>
-          </span>
-          <div class="os-actions">
-            <% if (p.eligible) { %>
-              <form method="post" action="<%= actionBase %>/moves/ncaa-eligible/<%= p.id %>" class="os-choose"
-                    onsubmit="var c=this.querySelector('input[name=action]:checked'); if(c&&c.value==='drop'){return confirm('Drop <%= p.name.replace(/'/g, "\\'") %> from NCAA Players?');} return true;">
-                <label class="os-opt"><input type="radio" name="action" value="activate" required> Activate</label>
-                <label class="os-opt"><input type="radio" name="action" value="taxi" <%= taxiFull ? 'disabled' : '' %>> Taxi<%= taxiFull ? ' (full)' : '' %></label>
-                <label class="os-opt"><input type="radio" name="action" value="drop"> Drop</label>
-                <button class="btn small green" type="submit">Apply</button>
-              </form>
-            <% } else { %>
-              <span class="os-hint">not eligible yet</span>
-            <% } %>
-          </div>
-        </div>
-      <% }); %>
-    <% } %>
-  </div>
-
-  <!-- Sign from ESPN -> Contract Players -->
-  <div class="os-group">
-    <h4>Sign from ESPN → Contract Players <span class="cnt"><%= counts.contract %>/<%= caps.contract %></span></h4>
-    <p class="os-note">The commissioner sets each player's contract terms; you can sign a player
-      on those terms once they're set. <% if (contractFull) { %><span class="tag warn">roster full</span><% } %></p>
-    <% if (!espnPlayers.length) { %>
-      <p class="os-empty">No players on the ESPN list. Run an ESPN Sync first, or all ESPN players are already categorized.</p>
-    <% } else { %>
-      <% espnPlayers.forEach(function(p){
-           var offer = offers[p.name];
-           var acq = offer ? offer.acq_type : 'auction';
-           var yrs = maxYears(acq);
-      %>
-        <div class="os-espn">
-          <div class="os-espn-head">
+    <!-- Taxi Squad: keep / promote to NCAA Contracts / drop -->
+    <div class="os-group">
+      <h4>Taxi Squad <span class="cnt"><%= counts.taxi %>/<%= caps.taxi %></span></h4>
+      <% if (!taxiPlayers.length) { %>
+        <p class="os-empty">No Taxi Squad players.</p>
+      <% } else { %>
+        <% taxiPlayers.forEach(function(p){ %>
+          <div class="os-row">
             <span class="os-name"><%= p.name %></span>
-            <% if (offer) { %><span class="tag ok"><%= offSummary(offer.acq_type, offer.auction_price) %></span><% } else { %><span class="tag">no terms set</span><% } %>
+            <div class="os-choices" role="radiogroup" aria-label="<%= p.name %>">
+              <label class="os-opt"><input type="radio" name="taxi_<%= p.id %>" value="keep" checked
+                       data-player="<%= p.name %>" data-move=""> Keep</label>
+              <label class="os-opt"><input type="radio" name="taxi_<%= p.id %>" value="promote"
+                       data-player="<%= p.name %>" data-move="promote to NCAA Contracts"> Promote to NCAA Contracts</label>
+              <label class="os-opt danger"><input type="radio" name="taxi_<%= p.id %>" value="drop"
+                       data-player="<%= p.name %>" data-move="drop from Taxi Squad"> Drop</label>
+            </div>
           </div>
+        <% }); %>
+      <% } %>
+    </div>
 
-          <form method="post" action="<%= actionBase %>/moves/sign" class="os-sign">
-            <input type="hidden" name="player_name" value="<%= p.name %>" />
-            <label>Years
-              <select name="years">
-                <% for (var y=1; y<=yrs; y++){ %><option value="<%= y %>"><%= y %></option><% } %>
-              </select>
+    <!-- NCAA Contracts: retain / drop -->
+    <div class="os-group">
+      <h4>NCAA Contracts</h4>
+      <% if (!ncaacPlayers.length) { %>
+        <p class="os-empty">No NCAA Contract players.</p>
+      <% } else { %>
+        <% ncaacPlayers.forEach(function(p){ %>
+          <div class="os-row">
+            <span class="os-name"><%= p.name %></span>
+            <div class="os-choices" role="radiogroup" aria-label="<%= p.name %>">
+              <label class="os-opt"><input type="radio" name="ncaac_<%= p.id %>" value="keep" checked
+                       data-player="<%= p.name %>" data-move=""> Retain</label>
+              <label class="os-opt danger"><input type="radio" name="ncaac_<%= p.id %>" value="drop"
+                       data-player="<%= p.name %>" data-move="drop from NCAA Contracts"> Drop</label>
+            </div>
+          </div>
+        <% }); %>
+      <% } %>
+    </div>
+
+    <!-- NCAA Players (eligible only): keep / activate / taxi / drop -->
+    <div class="os-group">
+      <h4>NCAA Players</h4>
+      <p class="os-note">The commissioner marks a player <strong>eligible</strong>; once eligible you choose
+        to <strong>activate</strong> them to NCAA Contracts, move them to the <strong>Taxi Squad</strong>,
+        or <strong>drop</strong> them. Taxi Squad has
+        <%= taxiSpots %> open spot<%= taxiSpots === 1 ? '' : 's' %>.</p>
+      <% if (!ncaaPlayers.length) { %>
+        <p class="os-empty">No NCAA Players.</p>
+      <% } else if (!eligNcaa.length) { %>
+        <p class="os-empty">No NCAA Players are eligible for a move yet.</p>
+      <% } else { %>
+        <% eligNcaa.forEach(function(p){ %>
+          <div class="os-row">
+            <span class="os-name"><%= p.name %> <span class="tag ok">eligible</span></span>
+            <div class="os-choices" role="radiogroup" aria-label="<%= p.name %>">
+              <label class="os-opt"><input type="radio" name="ncaa_<%= p.id %>" value="keep" checked
+                       data-player="<%= p.name %>" data-move=""> Keep</label>
+              <label class="os-opt"><input type="radio" name="ncaa_<%= p.id %>" value="activate"
+                       data-player="<%= p.name %>" data-move="activate to NCAA Contracts"> Activate</label>
+              <label class="os-opt"><input type="radio" name="ncaa_<%= p.id %>" value="taxi"
+                       data-player="<%= p.name %>" data-move="promote to Taxi Squad"> Taxi</label>
+              <label class="os-opt danger"><input type="radio" name="ncaa_<%= p.id %>" value="drop"
+                       data-player="<%= p.name %>" data-move="drop from NCAA Players"> Drop</label>
+            </div>
+          </div>
+        <% }); %>
+      <% } %>
+    </div>
+
+    <!-- Sign from ESPN -> Contract Players -->
+    <div class="os-group">
+      <h4>Sign from ESPN → Contract Players <span class="cnt"><%= counts.contract %>/<%= caps.contract %></span></h4>
+      <p class="os-note">The commissioner sets each player's contract terms; check a player to sign them on
+        those terms and pick the length. Signings count toward the <%= caps.contract %>-player cap.</p>
+      <% if (!espnPlayers.length) { %>
+        <p class="os-empty">No players on the ESPN list. Run an ESPN Sync first, or all ESPN players are already categorized.</p>
+      <% } else { %>
+        <% espnPlayers.forEach(function(p){
+             var offer = offers[p.name];
+             var acq = offer ? offer.acq_type : 'auction';
+             var yrs = maxYears(acq);
+        %>
+          <div class="os-row os-sign-row">
+            <label class="os-sign-check">
+              <input type="checkbox" name="sign_<%= p.id %>" value="1" <%= offer ? '' : 'disabled' %>
+                     data-player="<%= p.name %>" data-move="sign to Contract Players">
+              <span class="os-name"><%= p.name %></span>
             </label>
-            <button class="btn small green" type="submit" <%= (!offer || contractFull) ? 'disabled' : '' %>>Sign as Contract Player</button>
-            <% if (!offer) { %><span class="os-hint">commissioner must set terms first</span><% } %>
-          </form>
-        </div>
-      <% }); %>
-    <% } %>
-  </div>
+            <div class="os-sign-terms">
+              <% if (offer) { %>
+                <span class="tag ok"><%= offSummary(offer.acq_type, offer.auction_price) %></span>
+                <label class="os-years">Years
+                  <select name="years_<%= p.id %>">
+                    <% for (var y=1; y<=yrs; y++){ %><option value="<%= y %>"><%= y %></option><% } %>
+                  </select>
+                </label>
+              <% } else { %>
+                <span class="tag">no terms set</span>
+                <span class="os-hint">commissioner must set terms first</span>
+              <% } %>
+            </div>
+          </div>
+        <% }); %>
+      <% } %>
+    </div>
+
+    <!-- Live "what will happen" summary, built by the script below -->
+    <div class="os-pending" id="os-pending" hidden>
+      <h4>Pending moves <span class="cnt" id="os-pending-count">0</span></h4>
+      <ul id="os-pending-list"></ul>
+    </div>
+    <p class="os-pending-empty" id="os-pending-empty">No moves selected yet.</p>
+
+    <div class="os-submitbar">
+      <button class="btn green" type="submit" id="os-submit" disabled>Submit moves</button>
+      <button class="btn gray" type="button" id="os-reset">Clear selections</button>
+    </div>
+  </form>
 </section>
+
+<script>
+(function(){
+  var form = document.getElementById('osform');
+  if (!form) return;
+  var listEl  = document.getElementById('os-pending-list');
+  var wrapEl  = document.getElementById('os-pending');
+  var emptyEl = document.getElementById('os-pending-empty');
+  var countEl = document.getElementById('os-pending-count');
+  var submit  = document.getElementById('os-submit');
+
+  function selected(){
+    var out = [];
+    // Non-"keep" radios.
+    form.querySelectorAll('input[type=radio]:checked').forEach(function(r){
+      if (r.value !== 'keep' && r.dataset.move) {
+        out.push({ el: r, player: r.dataset.player, move: r.dataset.move });
+      }
+    });
+    // Checked sign boxes.
+    form.querySelectorAll('input[type=checkbox]:checked').forEach(function(c){
+      if (c.dataset.move) out.push({ el: c, player: c.dataset.player, move: c.dataset.move });
+    });
+    return out;
+  }
+
+  function clearOne(item){
+    if (item.el.type === 'checkbox') { item.el.checked = false; }
+    else {
+      var keep = form.querySelector('input[name="' + item.el.name + '"][value="keep"]');
+      if (keep) keep.checked = true;
+    }
+    render();
+  }
+
+  function render(){
+    var items = selected();
+    listEl.innerHTML = '';
+    items.forEach(function(it){
+      var li = document.createElement('li');
+      var txt = document.createElement('span');
+      txt.textContent = it.player + ' — ' + it.move;
+      var rm = document.createElement('button');
+      rm.type = 'button';
+      rm.className = 'os-remove';
+      rm.textContent = 'remove';
+      rm.addEventListener('click', function(){ clearOne(it); });
+      li.appendChild(txt);
+      li.appendChild(rm);
+      listEl.appendChild(li);
+    });
+    countEl.textContent = items.length;
+    wrapEl.hidden = items.length === 0;
+    emptyEl.hidden = items.length !== 0;
+    submit.disabled = items.length === 0;
+  }
+
+  form.addEventListener('change', render);
+  document.getElementById('os-reset').addEventListener('click', function(){
+    form.reset();
+    render();
+  });
+  form.addEventListener('submit', function(e){
+    var items = selected();
+    if (!items.length) { e.preventDefault(); return; }
+    if (!confirm('Submit ' + items.length + ' move' + (items.length===1?'':'s') + ' now?')) e.preventDefault();
+  });
+  render();
+})();
+</script>
 <% } %>
 
-<% if (typeof transactions !== 'undefined' && transactions.length) { %>
+<% if (typeof txnGroups !== 'undefined' && txnGroups.length) { %>
   <section class="roster-section section-blue offseason-log">
-    <h3 class="section-title">Offseason Transactions</h3>
+    <h3 class="section-title">Offseason Submissions</h3>
     <ul class="txn-feed">
-      <% transactions.forEach(function(tx){ %>
-        <li class="<%= tx.undone ? 'undone' : '' %>">
-          <span class="txn-text"><%= tx.summary %></span>
-          <span class="txn-side">
-            <span class="txn-when"><%= tx.created_at %><% if (tx.undone) { %> · undone<% } %></span>
-            <% if (offOn && !tx.undone) { %>
-              <form method="post" action="<%= actionBase %>/moves/undo/<%= tx.id %>"
-                    onsubmit="return confirm('Undo this move?');">
-                <button class="btn small gray" type="submit">Undo</button>
+      <% txnGroups.forEach(function(g){ %>
+        <li class="txn-group <%= g.allUndone ? 'undone' : '' %>">
+          <div class="txn-group-head">
+            <span class="txn-when"><%= g.created_at %><% if (g.allUndone) { %> · undone<% } %></span>
+            <% if (offOn && !g.allUndone) { %>
+              <% var undoAction = g.batchId != null
+                   ? actionBase + '/moves/undo-batch/' + g.batchId
+                   : actionBase + '/moves/undo/' + g.txnId; %>
+              <form method="post" action="<%= undoAction %>"
+                    onsubmit="return confirm('Undo this whole submission and reset the team to how it was before?');">
+                <button class="btn small gray" type="submit">Undo submission</button>
               </form>
             <% } %>
-          </span>
+          </div>
+          <ul class="txn-items">
+            <% g.items.forEach(function(tx){ %>
+              <li class="<%= tx.undone ? 'undone' : '' %>"><%= tx.summary %></li>
+            <% }); %>
+          </ul>
         </li>
       <% }); %>
     </ul>
