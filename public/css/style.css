@@ -181,3 +181,41 @@ body{
 .btn.yellow{background:var(--yellow);color:var(--ink)}
 .btn.danger{background:#b3261e}
 .btn.small{padding:7px 14px;font-size:14px;box-shadow:3px 3px 0 rgba(0,0,0,.25)}
+.btn.green{background:#1f9d55}
+.btn.gray{background:#5b6472}
+.btn[disabled]{opacity:.45;cursor:not-allowed;box-shadow:2px 2px 0 rgba(0,0,0,.2)}
+.btn[disabled]:hover{transform:none}
+
+/* ---------- Off-Season panel (team page) ---------- */
+.offseason-panel{background:#fff;border:3px solid var(--ink);border-radius:12px;
+  box-shadow:6px 6px 0 rgba(0,0,0,.18);padding:18px 18px 8px;margin:26px 0}
+.offseason-panel .os-heading{font-family:'Bangers',cursive;letter-spacing:1px;color:var(--red);
+  font-size:30px;margin:0 0 4px}
+.offseason-panel .os-note{color:#5b6472;font-size:14px;margin:0 0 12px}
+.offseason-panel .os-flash{background:#e7f6ec;border:2px solid #1f9d55;color:#12633a;
+  padding:9px 12px;border-radius:8px;font-weight:600;margin:0 0 14px}
+.offseason-panel .os-flash.warn{background:#fdeceb;border-color:#b3261e;color:#8a1c16}
+.os-group{border-top:2px dashed #e3e6ea;padding:14px 0}
+.os-group h4{font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.5px;
+  font-size:19px;margin:0 0 8px;color:var(--ink)}
+.os-group .cnt{color:#6b7280;font-weight:600;font-size:14px}
+.os-empty{color:#8a929e;font-style:italic;margin:4px 0}
+.os-row{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;
+  padding:8px 0;border-bottom:1px solid #f0f1f3}
+.os-row:last-child{border-bottom:none}
+.os-name{font-weight:600;color:var(--ink)}
+.os-actions{display:flex;gap:8px;flex-wrap:wrap}
+.os-actions form{margin:0}
+.os-espn{border:2px solid #e3e6ea;border-radius:8px;padding:12px;margin:10px 0;background:#fafbfc}
+.os-espn-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap}
+.os-offer,.os-sign{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:6px 0}
+.os-offer label,.os-sign label{font-size:14px;color:#5b6472;display:flex;align-items:center;gap:6px}
+.os-offer select,.os-sign select,.os-offer input{padding:5px 7px;border:2px solid #cfd4da;border-radius:6px}
+.os-hint{font-size:13px;color:#8a929e}
+.tag{display:inline-block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
+  padding:2px 8px;border-radius:20px;background:#eceef1;color:#5b6472}
+.tag.ok{background:#e7f6ec;color:#12633a}
+.tag.warn{background:#fdeceb;color:#8a1c16}
+/* Undo control inside the transactions feed */
+.offseason-log .txn-feed li .txn-side{display:flex;align-items:center;gap:10px}
+.offseason-log .txn-feed li form{margin:0}
