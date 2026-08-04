@@ -5,7 +5,7 @@
 
 const assert = require('assert');
 const { parseRosterEntries, parseDraftPicks } = require('./espn');
-const { computeOffersFromEspn, computeOffersFromRecap, acqReason } = require('./contractPricing');
+const { computeOffersFromEspn, computeOffersFromRecap, acqReason, applyAuctionFloor } = require('./contractPricing');
 
 let passed = 0;
 function ok(cond, msg) { assert.ok(cond, msg); passed++; }
@@ -160,6 +160,59 @@ eq(r2.offers.length, 6, 'engine accepts a Map for espnToSiteTeam');
   const pricedAuction = rr.offers.find(o => o.acq_type === 'auction' && o.auction_price > 0);
   ok(pricedAuction && /Draft Recap PDF/.test(pricedAuction.reason), 'priced auction offer cites the PDF');
   ok(rr.stats.unmatchedTeams.includes(9), 'recap engine still reports unmapped team 9');
+}
+
+// ---- $11 auction floor (league rule) --------------------------------------
+// Any auction price of $10 or less is bumped to the $11 contract minimum.
+// A price of 0 (unknown / no bid found) is NOT bumped — it stays flagged.
+eq(applyAuctionFloor(1), 11, 'a $1 win floors to $11');
+eq(applyAuctionFloor(8), 11, 'an $8 win floors to $11');
+eq(applyAuctionFloor(10), 11, 'a $10 win floors to $11');
+eq(applyAuctionFloor(11), 11, 'a $11 win stays $11');
+eq(applyAuctionFloor(12), 12, 'a $12 win is unchanged');
+eq(applyAuctionFloor(54), 54, 'a $54 win is unchanged');
+eq(applyAuctionFloor(0), 0, 'a $0 (unknown) is left alone, not bumped');
+
+// End-to-end: a drafted player with a cheap bid gets the $11 floor + is flagged.
+{
+  const rosterEntries = [
+    { espnTeamId: 1, playerId: 501, acquisitionType: 'DRAFT', playerName: 'Cheap Charlie' },
+    { espnTeamId: 1, playerId: 502, acquisitionType: 'DRAFT', playerName: 'Exact Ten Eddie' },
+    { espnTeamId: 1, playerId: 503, acquisitionType: 'DRAFT', playerName: 'Pricey Pete' }
+  ];
+  const draftPicks = [
+    { playerId: 501, teamId: 1, bidAmount: 3 },
+    { playerId: 502, teamId: 1, bidAmount: 10 },
+    { playerId: 503, teamId: 1, bidAmount: 40 }
+  ];
+  const active = [
+    { team_id: 10, name: 'Cheap Charlie' },
+    { team_id: 10, name: 'Exact Ten Eddie' },
+    { team_id: 10, name: 'Pricey Pete' }
+  ];
+  const r = computeOffersFromEspn({ rosterEntries, draftPicks, espnActive: active, espnToSiteTeam: { 1: 10 } });
+  const bn = Object.fromEntries(r.offers.map(o => [o.player_name, o]));
+  eq(bn['Cheap Charlie'].auction_price, 11, '$3 bid floored to $11');
+  eq(bn['Exact Ten Eddie'].auction_price, 11, '$10 bid floored to $11');
+  eq(bn['Pricey Pete'].auction_price, 40, '$40 bid unchanged');
+  ok(/raised to the \$11 league minimum/.test(bn['Cheap Charlie'].reason), 'floored offer explains the bump');
+  ok(/\$3\b/.test(bn['Cheap Charlie'].reason), 'floored offer still shows the original $3 bid');
+  ok(r.stats.floored.includes('Cheap Charlie') && r.stats.floored.includes('Exact Ten Eddie'), 'floored players tracked in stats');
+  ok(!r.stats.floored.includes('Pricey Pete'), 'unfloored player not in floored stats');
+}
+
+// The floor also applies on the PDF-price path.
+{
+  const rosterEntries = [
+    { espnTeamId: 1, playerId: 601, acquisitionType: 'DRAFT', playerName: 'Bargain Bob' }
+  ];
+  const active = [{ team_id: 10, name: 'Bargain Bob' }];
+  const priceByName = { 'bargain bob': 5 };
+  const r = computeOffersFromRecap({ rosterEntries, priceByName, espnActive: active, espnToSiteTeam: { 1: 10 } });
+  const off = r.offers.find(o => o.player_name === 'Bargain Bob');
+  eq(off.auction_price, 11, 'PDF $5 price floored to $11');
+  ok(/raised to the \$11 league minimum/.test(off.reason) && /Draft Recap PDF/.test(off.reason), 'PDF floored offer explains bump + cites PDF');
+  ok(r.stats.floored.includes('Bargain Bob'), 'PDF-floored player tracked in stats');
 }
 
 console.log(`contractPricing.test.js — all ${passed} assertions passed`);

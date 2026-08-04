@@ -26,6 +26,16 @@
 
 const { normalizeName } = require('./espn');
 
+// League rule: an auction contract can never be priced below $11. Any winning
+// bid of $10 or less is bumped up to the $11 floor for the contract price.
+// NOTE: a price of 0 means "unknown / no bid found" (NOT a real $0 win — real
+// auction wins are always >= the minimum bid), so it is left at 0 and flagged
+// for the commissioner to set, rather than silently bumped to $11.
+const AUCTION_FLOOR = 11;
+function applyAuctionFloor(price) {
+  return (price > 0 && price <= AUCTION_FLOOR - 1) ? AUCTION_FLOOR : price;
+}
+
 // acquisitionType values ESPN uses that mean "not a held auction pick".
 // (We treat DRAFT as auction; everything else is waiver terms.)
 function acqReason(acquisitionType) {
@@ -75,7 +85,7 @@ function computeOffersFromEspn({ rosterEntries = [], draftPicks = [], espnActive
   }
 
   const offers = [];
-  const stats = { auction: 0, waiver: 0, auctionNoBid: [], unmatchedTeams: new Set() };
+  const stats = { auction: 0, waiver: 0, auctionNoBid: [], floored: [], unmatchedTeams: new Set() };
 
   for (const e of rosterEntries) {
     const siteId = toSite.get(String(e.espnTeamId));
@@ -88,15 +98,20 @@ function computeOffersFromEspn({ rosterEntries = [], draftPicks = [], espnActive
     const isDraft = String(e.acquisitionType || '').toUpperCase() === 'DRAFT';
     if (isDraft) {
       const bid = bidByPlayerId.get(String(e.playerId));
-      const price = (bid != null && Number.isFinite(bid)) ? bid : 0;
-      if (price <= 0) stats.auctionNoBid.push(siteName);
+      const rawPrice = (bid != null && Number.isFinite(bid)) ? bid : 0;
+      const price = applyAuctionFloor(rawPrice);
+      const bumped = price !== rawPrice;
+      if (rawPrice <= 0) stats.auctionNoBid.push(siteName);
+      if (bumped) stats.floored.push(siteName);
       offers.push({
         team_id: siteId,
         player_name: siteName,
         acq_type: 'auction',
         auction_price: price,
-        reason: price > 0
-          ? `Drafted at auction for $${price}`
+        reason: rawPrice > 0
+          ? (bumped
+              ? `Drafted at auction for $${rawPrice} — raised to the $${price} league minimum`
+              : `Drafted at auction for $${price}`)
           : 'Drafted at auction (no bid amount found — please set the price)'
       });
       stats.auction++;
@@ -146,7 +161,7 @@ function computeOffersFromRecap({ rosterEntries = [], priceByName, espnActive = 
   }
 
   const offers = [];
-  const stats = { auction: 0, waiver: 0, auctionNoBid: [], unmatchedTeams: new Set(), matched: new Set() };
+  const stats = { auction: 0, waiver: 0, auctionNoBid: [], floored: [], unmatchedTeams: new Set(), matched: new Set() };
 
   for (const e of rosterEntries) {
     const siteId = toSite.get(String(e.espnTeamId));
@@ -159,16 +174,21 @@ function computeOffersFromRecap({ rosterEntries = [], priceByName, espnActive = 
     const isDraft = String(e.acquisitionType || '').toUpperCase() === 'DRAFT';
     if (isDraft) {
       const found = prices.has(norm);
-      const price = found ? prices.get(norm) : 0;
+      const rawPrice = found ? prices.get(norm) : 0;
+      const price = applyAuctionFloor(rawPrice);
+      const bumped = price !== rawPrice;
       if (found) stats.matched.add(norm);
-      if (!(price > 0)) stats.auctionNoBid.push(siteName);
+      if (!(rawPrice > 0)) stats.auctionNoBid.push(siteName);
+      if (bumped) stats.floored.push(siteName);
       offers.push({
         team_id: siteId,
         player_name: siteName,
         acq_type: 'auction',
-        auction_price: price > 0 ? price : 0,
-        reason: price > 0
-          ? `Drafted at auction for $${price} (from Draft Recap PDF)`
+        auction_price: price,
+        reason: rawPrice > 0
+          ? (bumped
+              ? `Drafted at auction for $${rawPrice} — raised to the $${price} league minimum (from Draft Recap PDF)`
+              : `Drafted at auction for $${price} (from Draft Recap PDF)`)
           : 'Drafted at auction, but no price for this name was found in the PDF — please set it'
       });
       stats.auction++;
@@ -201,4 +221,4 @@ function normalizeTeamMap(m) {
   return out;
 }
 
-module.exports = { computeOffersFromEspn, computeOffersFromRecap, acqReason };
+module.exports = { computeOffersFromEspn, computeOffersFromRecap, acqReason, applyAuctionFloor };
