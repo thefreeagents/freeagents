@@ -5,7 +5,7 @@
 //   - Updates each mapped team's record + points_for.
 const { db, MANUAL_SECTIONS, CONTRACT_SECTIONS } = require('../db/db');
 const {
-  fetchLeague, parseTeams, leagueName, planRosterMerge,
+  fetchLeague, fetchDraftDetail, parseTeams, leagueName, planRosterMerge,
   parseRosterEntries, parseDraftPicks,
   fetchLeagueHistory, aggregateAllTime, formatRecord
 } = require('./espn');
@@ -21,6 +21,17 @@ function setSetting(key, value) {
 }
 function currentSeason() {
   return getSetting('espn_season') || String(new Date().getFullYear());
+}
+// The season whose auction results supply contract prices. This is set
+// separately from the roster season because a league auctions in one season but
+// its results become the *following* season's contract prices, and because the
+// current season's auction may not have happened yet. Defaults to the season
+// before the roster season if not explicitly set.
+function auctionSeason() {
+  const explicit = getSetting('espn_auction_season');
+  if (explicit) return explicit;
+  const cur = parseInt(currentSeason(), 10);
+  return Number.isFinite(cur) ? String(cur - 1) : currentSeason();
 }
 
 // Fetch ESPN teams (for the mapping screen). Returns { leagueName, teams }.
@@ -133,10 +144,34 @@ async function syncLeague() {
 async function priceFromEspn() {
   const leagueId = getSetting('espn_league_id');
   const season = currentSeason();
+  const auctSeason = auctionSeason();
   const data = await fetchLeague(leagueId, season);
 
   const rosterEntries = parseRosterEntries(data);
-  const draftPicks = parseDraftPicks(data);
+
+  // Auction bids come from a dedicated draft-detail request for the AUCTION
+  // season (which may differ from the roster season — a league auctions in one
+  // season but those winning bids become the following season's keeper/contract
+  // prices, and the current season's auction may not have happened yet). ESPN
+  // player IDs are stable across seasons, so last year's bids map cleanly onto
+  // this year's roster by playerId. ESPN can also drop the draft data when views
+  // are bundled, hence the dedicated request; fall back to the main payload if
+  // the dedicated call fails or comes back empty, so pricing still runs.
+  let draftPicks = [];
+  let draftError = null;
+  try {
+    const draftData = await fetchDraftDetail(leagueId, auctSeason);
+    draftPicks = parseDraftPicks(draftData);
+  } catch (e) {
+    draftError = e.message;
+  }
+  if (!draftPicks.length) {
+    const fallback = parseDraftPicks(data);
+    if (fallback.length) draftPicks = fallback;
+  }
+  const draftPicksWithBid = draftPicks.filter(
+    p => p.bidAmount != null && Number.isFinite(p.bidAmount) && p.bidAmount > 0
+  ).length;
 
   const siteTeams = db.prepare('SELECT id, name, espn_team_id FROM teams').all();
   const espnToSiteTeam = new Map();
@@ -173,12 +208,15 @@ async function priceFromEspn() {
   return {
     leagueName: leagueName(data),
     season,
+    auctionSeason: auctSeason,
     priced: offers.length,
     draftCount: draftPicks.length,
+    draftPicksWithBid,
+    draftError,
     rosterCount: rosterEntries.length,
     stats,
     teams: [...byTeam.entries()].map(([team, list]) => ({ team, offers: list }))
   };
 }
 
-module.exports = { fetchEspnTeams, syncLeague, priceFromEspn, getSetting, setSetting, currentSeason };
+module.exports = { fetchEspnTeams, syncLeague, priceFromEspn, getSetting, setSetting, currentSeason, auctionSeason };

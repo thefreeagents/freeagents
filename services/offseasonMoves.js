@@ -82,6 +82,42 @@ function ncaaToTaxi(teamId, pid) {
   return 'promoted_taxi';
 }
 
+// 3c) Activate an eligible NCAA Player into NCAA Contracts.
+function ncaaActivate(teamId, pid) {
+  const p = teamPlayer(teamId, pid);
+  if (!p || p.section !== 'ncaa_player') return null;
+  if (!p.eligible) return 'not_eligible';
+  db.prepare("UPDATE players SET section = 'ncaa_contract', eligible = 0 WHERE id = ?").run(p.id);
+  logTxn(teamId, 'activate_ncaac', p.name, `Activated ${p.name} from NCAA Players to NCAA Contracts`,
+    { player_id: p.id });
+  return 'activated_ncaac';
+}
+
+// 3d) Drop an eligible NCAA Player from the watchlist entirely.
+function dropNcaaPlayer(teamId, pid) {
+  const p = teamPlayer(teamId, pid);
+  if (!p || p.section !== 'ncaa_player') return null;
+  if (!p.eligible) return 'not_eligible';
+  db.prepare('DELETE FROM players WHERE id = ?').run(p.id);
+  logTxn(teamId, 'drop_ncaa', p.name, `Dropped ${p.name} from NCAA Players`,
+    { name: p.name, contracts: p.contracts, image: p.image, sort_order: p.sort_order });
+  return 'dropped_ncaa';
+}
+
+// 3e) Apply the chosen move to an eligible NCAA Player. The team page/admin
+// editor forces a selection (Activate / Taxi / Drop); this is the single entry
+// point that dispatches to the right handler and guards against a missing or
+// unknown choice server-side (belt-and-suspenders with the required radios).
+function ncaaEligibleMove(teamId, pid, action) {
+  const p = teamPlayer(teamId, pid);
+  if (!p || p.section !== 'ncaa_player') return null;
+  if (!p.eligible) return 'not_eligible';
+  if (action === 'activate') return ncaaActivate(teamId, pid);
+  if (action === 'taxi') return ncaaToTaxi(teamId, pid);
+  if (action === 'drop') return dropNcaaPlayer(teamId, pid);
+  return 'choose_action';
+}
+
 // 5) Drop an NCAA Contract player entirely.
 function dropNcaac(teamId, pid) {
   const p = teamPlayer(teamId, pid);
@@ -149,15 +185,20 @@ function undo(teamId, txnId) {
   let data = {};
   try { data = JSON.parse(txn.payload || '{}'); } catch (e) { data = {}; }
 
-  if (txn.kind === 'drop' || txn.kind === 'drop_ncaac') {
-    // Re-create the deleted player back in its original section.
-    const section = txn.kind === 'drop' ? 'taxi' : 'ncaa_contract';
+  if (txn.kind === 'drop' || txn.kind === 'drop_ncaac' || txn.kind === 'drop_ncaa') {
+    // Re-create the deleted player back in its original section. NCAA Players
+    // come back eligible (that's the only state they can be dropped from).
+    const section = txn.kind === 'drop' ? 'taxi'
+      : txn.kind === 'drop_ncaac' ? 'ncaa_contract' : 'ncaa_player';
+    const eligible = txn.kind === 'drop_ncaa' ? 1 : 0;
     db.prepare(
-      'INSERT INTO players (team_id, name, section, contracts, image, sort_order) VALUES (?, ?, ?, ?, ?, ?)'
-    ).run(teamId, data.name, section, data.contracts || '', data.image || '', data.sort_order || 0);
+      'INSERT INTO players (team_id, name, section, contracts, image, sort_order, eligible) VALUES (?, ?, ?, ?, ?, ?, ?)'
+    ).run(teamId, data.name, section, data.contracts || '', data.image || '', data.sort_order || 0, eligible);
   } else if (txn.kind === 'promote_ncaac') {
     db.prepare("UPDATE players SET section = 'taxi' WHERE id = ? AND team_id = ?").run(data.player_id, teamId);
   } else if (txn.kind === 'promote_taxi') {
+    db.prepare("UPDATE players SET section = 'ncaa_player', eligible = 1 WHERE id = ? AND team_id = ?").run(data.player_id, teamId);
+  } else if (txn.kind === 'activate_ncaac') {
     db.prepare("UPDATE players SET section = 'ncaa_player', eligible = 1 WHERE id = ? AND team_id = ?").run(data.player_id, teamId);
   } else if (txn.kind === 'sign') {
     db.prepare('DELETE FROM players WHERE id = ? AND team_id = ?').run(data.player_id, teamId);
@@ -183,6 +224,9 @@ module.exports = {
   taxiToNcaac,
   toggleEligible,
   ncaaToTaxi,
+  ncaaActivate,
+  dropNcaaPlayer,
+  ncaaEligibleMove,
   dropNcaac,
   saveOffer,
   signPlayer,

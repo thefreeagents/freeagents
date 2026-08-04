@@ -15,11 +15,20 @@
 const ESPN_HOST = 'https://lm-api-reads.fantasy.espn.com';
 
 function leagueUrl(leagueId, season) {
-  // mDraftDetail adds the auction draft results (bid amount per pick);
   // mRoster entries carry each player's acquisitionType (DRAFT / ADD / TRADE),
-  // which is what tells us auction vs. waiver contracts.
+  // which is what tells us auction vs. waiver contracts. The auction bid amounts
+  // (mDraftDetail) are fetched SEPARATELY — see draftDetailUrl below — because
+  // ESPN frequently returns partial/empty data when many views are bundled into
+  // one request, which was silently zeroing out every auction price.
   return `${ESPN_HOST}/apis/v3/games/ffl/seasons/${season}/segments/0/leagues/${leagueId}`
-    + '?view=mTeam&view=mRoster&view=mSettings&view=mDraftDetail';
+    + '?view=mTeam&view=mRoster&view=mSettings';
+}
+
+// Dedicated URL for the auction draft results (bid amount per pick). Requested
+// on its own so ESPN reliably returns the full draftDetail.picks payload.
+function draftDetailUrl(leagueId, season) {
+  return `${ESPN_HOST}/apis/v3/games/ffl/seasons/${season}/segments/0/leagues/${leagueId}`
+    + '?view=mDraftDetail';
 }
 
 // Fetch a (public) league. Throws a friendly Error on failure.
@@ -51,6 +60,33 @@ async function fetchLeague(leagueId, season) {
     throw new Error('ESPN response did not contain any teams. The season may not be set up yet.');
   }
   return data;
+}
+
+// Fetch the auction draft results on their own request. Returns the raw payload
+// (with a top-level draftDetail). Kept separate from fetchLeague so a bundled
+// multi-view request can't cause ESPN to drop the draft data. Throws a friendly
+// Error on transport/HTTP failure so the caller can report it.
+async function fetchDraftDetail(leagueId, season) {
+  if (!leagueId) throw new Error('No ESPN league ID has been set.');
+  let res;
+  try {
+    res = await fetch(draftDetailUrl(leagueId, season), {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; TheFreeAgents/1.0)',
+        'Accept': 'application/json'
+      }
+    });
+  } catch (e) {
+    throw new Error(`Could not reach ESPN for draft results (${e.message}).`);
+  }
+  if (!res.ok) {
+    throw new Error(`ESPN draft-results request failed (HTTP ${res.status}).`);
+  }
+  try {
+    return await res.json();
+  } catch (e) {
+    throw new Error('ESPN returned an unreadable draft-results response.');
+  }
 }
 
 // Normalise a name for fuzzy matching (case, punctuation, common suffixes).
@@ -273,7 +309,7 @@ function planRosterMerge(espnPlayerNames, sitePlayers, manualSections, contractS
 }
 
 module.exports = {
-  leagueUrl, fetchLeague, normalizeName, espnTeamName,
+  leagueUrl, fetchLeague, draftDetailUrl, fetchDraftDetail, normalizeName, espnTeamName,
   parseTeams, leagueName, suggestSiteTeamId, planRosterMerge,
   parseRosterEntries, parseDraftPicks,
   historyUrl, fetchLeagueHistory, teamRecords, aggregateAllTime, formatRecord

@@ -80,6 +80,10 @@ router.post('/team/:slug/moves/taxi-to-ncaac/:pid', requireOffseason, (req, res)
 router.post('/team/:slug/moves/ncaa-to-taxi/:pid', requireOffseason, (req, res) => {
   backToTeam(res, req.team.slug, moves.ncaaToTaxi(req.team.id, req.params.pid));
 });
+// Eligible NCAA Player: the team must choose Activate / Taxi / Drop.
+router.post('/team/:slug/moves/ncaa-eligible/:pid', requireOffseason, (req, res) => {
+  backToTeam(res, req.team.slug, moves.ncaaEligibleMove(req.team.id, req.params.pid, req.body.action));
+});
 router.post('/team/:slug/moves/drop-ncaac/:pid', requireOffseason, (req, res) => {
   backToTeam(res, req.team.slug, moves.dropNcaac(req.team.id, req.params.pid));
 });

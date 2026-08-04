@@ -230,6 +230,11 @@ router.post('/teams/:id/moves/ncaa-to-taxi/:pid', requireAdmin, requireOffseason
   backToTeam(res, req.params.id, moves.ncaaToTaxi(req.params.id, req.params.pid));
 });
 
+// 3c) Eligible NCAA Player: choose Activate / Taxi / Drop (validated in module).
+router.post('/teams/:id/moves/ncaa-eligible/:pid', requireAdmin, requireOffseason, (req, res) => {
+  backToTeam(res, req.params.id, moves.ncaaEligibleMove(req.params.id, req.params.pid, req.body.action));
+});
+
 // 5) Drop an NCAA Contract player entirely.
 router.post('/teams/:id/moves/drop-ncaac/:pid', requireAdmin, requireOffseason, (req, res) => {
   backToTeam(res, req.params.id, moves.dropNcaac(req.params.id, req.params.pid));
@@ -331,6 +336,7 @@ function espnHomeData() {
     settings: {
       league_id: espnSync.getSetting('espn_league_id'),
       season: espnSync.currentSeason(),
+      auction_season: espnSync.auctionSeason(),
       last_sync: espnSync.getSetting('espn_last_sync')
     },
     teams
@@ -352,8 +358,11 @@ router.get('/espn', requireAdmin, (req, res) => {
 router.post('/espn/settings', requireAdmin, (req, res) => {
   const leagueId = (req.body.league_id || '').trim();
   const season = (req.body.season || '').trim();
+  const auctionSeason = (req.body.auction_season || '').trim();
   espnSync.setSetting('espn_league_id', leagueId);
   if (season) espnSync.setSetting('espn_season', season);
+  // Blank clears the override so it falls back to (roster season − 1).
+  espnSync.setSetting('espn_auction_season', auctionSeason);
   res.redirect('/admin/espn?saved=settings');
 });
 

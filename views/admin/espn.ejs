@@ -26,6 +26,16 @@
     <div class="field">
       <label>Season</label>
       <input type="text" name="season" value="<%= settings.season || '' %>" placeholder="<%= new Date().getFullYear() %>" style="max-width:140px" />
+      <p class="hint">The season whose rosters and standings you want to display.</p>
+    </div>
+    <div class="field">
+      <label>Auction price season</label>
+      <input type="text" name="auction_season" value="<%= settings.auction_season || '' %>" placeholder="<%= (parseInt(settings.season,10) || new Date().getFullYear()) - 1 %>" style="max-width:140px" />
+      <p class="hint">The season whose <strong>auction results</strong> supply contract prices (step 4).
+        You hold an auction each year, and last year's winning bids become this year's contract
+        prices — so this is usually the season <em>before</em> the roster season. Leave blank to
+        default to one season before the roster season. Player IDs are stable across seasons, so
+        prices map onto your current roster automatically.</p>
     </div>
     <button class="btn" type="submit">Save league settings</button>
   </form>
@@ -128,11 +138,13 @@
 <!-- 4. Set contract prices from ESPN ------------------------------------->
 <div class="card">
   <h2>4. Set contract prices from ESPN</h2>
-  <p class="hint">Reads each “On ESPN Roster” player's <strong>acquisition type</strong> and
-    <strong>auction bid</strong> straight from ESPN (the same feed the sync above uses), then sets
-    their contract terms: drafted at auction and still held &rarr; that auction price (1–3 yrs);
-    everyone else — picked up on waivers, free agency, or a trade &rarr; waiver terms $11 / $15
-    (1–2 yrs). Players already filed under Contract Players or NCAA Contracts are left alone.</p>
+  <p class="hint">Reads each “On ESPN Roster” player's <strong>acquisition type</strong> straight from
+    ESPN, and pulls each player's <strong>winning auction bid</strong> from the
+    <strong>Auction price season</strong> set in step 1 (matched by ESPN player ID, which is stable
+    across seasons). It then sets their contract terms: drafted at auction and still held &rarr; that
+    auction price (1–3 yrs); everyone else — picked up on waivers, free agency, or a trade &rarr;
+    waiver terms $11 / $15 (1–2 yrs). Players already filed under Contract Players or NCAA Contracts
+    are left alone.</p>
   <p class="hint">Run the roster sync first so every player is imported, then set prices. Every offer
     is editable afterward before it's signed.</p>
   <form method="post" action="/admin/espn/pricing">
@@ -143,9 +155,29 @@
     <div style="margin-top:18px">
       <div class="flash">
         Priced <strong><%= pricing.priced %></strong> ESPN-roster players
-        (<%= pricing.stats.auction %> at auction price, <%= pricing.stats.waiver %> at waiver terms)
-        from <%= pricing.draftCount %> draft picks.
+        (<%= pricing.stats.auction %> at auction price, <%= pricing.stats.waiver %> at waiver terms).
+        Read <strong><%= pricing.draftCount %></strong> draft pick<%= pricing.draftCount===1?'':'s' %>
+        from the <strong><%= pricing.auctionSeason %></strong> auction,
+        <strong><%= pricing.draftPicksWithBid %></strong> with a bid amount.
       </div>
+
+      <% if (pricing.draftCount === 0) { %>
+        <div class="flash warn">
+          ESPN returned <strong>no draft picks</strong> for the
+          <strong><%= pricing.auctionSeason %></strong> auction season,
+          so there were no auction prices to apply.
+          <% if (pricing.draftError) { %><br>Draft-results request error: <%= pricing.draftError %><% } %>
+          <br>Check that the <strong>Auction price season</strong> in step 1 matches the season whose
+          auction you want to price, and that that season's auction has actually taken place.
+        </div>
+      <% } else if (pricing.draftPicksWithBid === 0) { %>
+        <div class="flash warn">
+          ESPN returned <%= pricing.draftCount %> draft picks but <strong>none carried a bid amount</strong>.
+          That usually means the <%= pricing.auctionSeason %> draft was a <strong>snake draft</strong>
+          (no auction prices) rather than an auction. Double-check the <strong>Auction price season</strong>
+          in step 1, or set auction prices manually below.
+        </div>
+      <% } %>
 
       <% if (pricing.stats.auctionNoBid && pricing.stats.auctionNoBid.length) { %>
         <div class="flash warn">

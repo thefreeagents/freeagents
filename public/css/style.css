@@ -212,6 +212,9 @@ body{
 .os-offer label,.os-sign label{font-size:14px;color:#5b6472;display:flex;align-items:center;gap:6px}
 .os-offer select,.os-sign select,.os-offer input{padding:5px 7px;border:2px solid #cfd4da;border-radius:6px}
 .os-hint{font-size:13px;color:#8a929e}
+.os-choose{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0}
+.os-opt{display:flex;align-items:center;gap:5px;font-size:14px;color:#5b6472;cursor:pointer}
+.os-opt input{margin:0}
 .tag{display:inline-block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
   padding:2px 8px;border-radius:20px;background:#eceef1;color:#5b6472}
 .tag.ok{background:#e7f6ec;color:#12633a}

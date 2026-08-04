@@ -111,6 +111,9 @@ table.teams tr:hover td{background:#fafbfc}
 .os-name{font-weight:700}
 .os-actions{display:flex;gap:8px;flex-wrap:wrap}
 .os-actions form{margin:0}
+.os-choose{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.os-opt{display:flex;align-items:center;gap:5px;font-size:14px;color:#5b6472;cursor:pointer}
+.os-opt input{margin:0}
 .os-empty{color:#8a919c;font-style:italic;margin:4px 0 0}
 .os-espn{border:1px solid #e3e6ea;border-radius:8px;padding:10px 12px;margin-top:8px}
 .os-espn-head{display:flex;align-items:center;gap:10px;margin-bottom:8px}

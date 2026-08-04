@@ -79,8 +79,11 @@
      var moveMsg = {
        dropped:        'Player dropped from the Taxi Squad.',
        dropped_ncaac:  'Player dropped from NCAA Contracts.',
+       dropped_ncaa:   'Player dropped from NCAA Players.',
        promoted_ncaac: 'Promoted to NCAA Contracts.',
        promoted_taxi:  'Promoted to the Taxi Squad.',
+       activated_ncaac:'Activated to NCAA Contracts.',
+       choose_action:  'Please choose Activate, Taxi, or Drop first.',
        not_eligible:   'That player must be marked eligible first.',
        taxi_full:      'Taxi Squad is full (max ' + caps.taxi + ').',
        offer_saved:    'Contract terms saved.',
@@ -89,7 +92,7 @@
        bad_terms:      'Please set valid contract terms (acquisition type, price, and years).',
        undone:         'Move undone.'
      };
-     var warnMoves = ['not_eligible','taxi_full','contract_full','bad_terms'];
+     var warnMoves = ['not_eligible','taxi_full','contract_full','bad_terms','choose_action'];
 %>
 <section class="offseason-panel">
   <h3 class="os-heading">Off-Season Moves</h3>
@@ -143,11 +146,12 @@
     <% } %>
   </div>
 
-  <!-- NCAA Players -> Taxi Squad -->
+  <!-- NCAA Players -> Activate / Taxi / Drop -->
   <div class="os-group">
-    <h4>NCAA Players → Taxi Squad</h4>
-    <p class="os-note">The commissioner marks a player <strong>eligible</strong>; once eligible you can
-      promote them. Taxi Squad has
+    <h4>NCAA Players</h4>
+    <p class="os-note">The commissioner marks a player <strong>eligible</strong>; once eligible you choose
+      what happens to them — <strong>Activate</strong> to NCAA Contracts, move to the <strong>Taxi
+      Squad</strong>, or <strong>Drop</strong> them. Taxi Squad has
       <%= caps.taxi - counts.taxi %> open spot<%= (caps.taxi - counts.taxi)===1 ? '' : 's' %>.</p>
     <% if (!ncaaPlayers.length) { %>
       <p class="os-empty">No NCAA Players.</p>
@@ -160,11 +164,17 @@
             <% } else { %><span class="tag">not eligible yet</span><% } %>
           </span>
           <div class="os-actions">
-            <form method="post" action="<%= actionBase %>/moves/ncaa-to-taxi/<%= p.id %>">
-              <button class="btn small green" type="submit" <%= (!p.eligible || taxiFull) ? 'disabled' : '' %>>
-                Promote to Taxi Squad
-              </button>
-            </form>
+            <% if (p.eligible) { %>
+              <form method="post" action="<%= actionBase %>/moves/ncaa-eligible/<%= p.id %>" class="os-choose"
+                    onsubmit="var c=this.querySelector('input[name=action]:checked'); if(c&&c.value==='drop'){return confirm('Drop <%= p.name.replace(/'/g, "\\'") %> from NCAA Players?');} return true;">
+                <label class="os-opt"><input type="radio" name="action" value="activate" required> Activate</label>
+                <label class="os-opt"><input type="radio" name="action" value="taxi" <%= taxiFull ? 'disabled' : '' %>> Taxi<%= taxiFull ? ' (full)' : '' %></label>
+                <label class="os-opt"><input type="radio" name="action" value="drop"> Drop</label>
+                <button class="btn small green" type="submit">Apply</button>
+              </form>
+            <% } else { %>
+              <span class="os-hint">not eligible yet</span>
+            <% } %>
           </div>
         </div>
       <% }); %>
