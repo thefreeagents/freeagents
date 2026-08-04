@@ -51,7 +51,7 @@
               <td><strong><%= r.espnName %></strong></td>
               <td><%= r.record %></td>
               <td>
-                <select name="map[<%= r.espnId %>]">
+                <select name="map[t<%= r.espnId %>]">
                   <option value="">— not in league / skip —</option>
                   <% mapping.siteTeams.forEach(function(st){ %>
                     <option value="<%= st.id %>" <%= String(r.suggestedSiteId)===String(st.id) ? 'selected' : '' %>><%= st.name %></option>
@@ -88,6 +88,14 @@
         </div>
       <% } %>
 
+      <% if (report.duplicateMapping && report.duplicateMapping.length) { %>
+        <div class="flash warn">
+          These site teams share the same ESPN team, so they pulled the same roster:
+          <%= report.duplicateMapping.join(', ') %>. Re-open “Match teams” and give each a
+          different ESPN team.
+        </div>
+      <% } %>
+
       <table class="teams">
         <thead><tr><th>Site team</th><th>ESPN team</th><th>Record</th><th>On ESPN roster</th><th>Newly added</th><th>Possibly dropped</th></tr></thead>
         <tbody>
@@ -113,6 +121,66 @@
       </table>
       <p class="hint">“Possibly dropped” players are only listed here for your review — the sync never removes
         anyone from your contract lists automatically.</p>
+    </div>
+  <% } %>
+</div>
+
+<!-- 4. Set contract prices from ESPN ------------------------------------->
+<div class="card">
+  <h2>4. Set contract prices from ESPN</h2>
+  <p class="hint">Reads each “On ESPN Roster” player's <strong>acquisition type</strong> and
+    <strong>auction bid</strong> straight from ESPN (the same feed the sync above uses), then sets
+    their contract terms: drafted at auction and still held &rarr; that auction price (1–3 yrs);
+    everyone else — picked up on waivers, free agency, or a trade &rarr; waiver terms $11 / $15
+    (1–2 yrs). Players already filed under Contract Players or NCAA Contracts are left alone.</p>
+  <p class="hint">Run the roster sync first so every player is imported, then set prices. Every offer
+    is editable afterward before it's signed.</p>
+  <form method="post" action="/admin/espn/pricing">
+    <button class="btn green" type="submit">Set contract prices from ESPN</button>
+  </form>
+
+  <% if (typeof pricing !== 'undefined' && pricing) { %>
+    <div style="margin-top:18px">
+      <div class="flash">
+        Priced <strong><%= pricing.priced %></strong> ESPN-roster players
+        (<%= pricing.stats.auction %> at auction price, <%= pricing.stats.waiver %> at waiver terms)
+        from <%= pricing.draftCount %> draft picks.
+      </div>
+
+      <% if (pricing.stats.auctionNoBid && pricing.stats.auctionNoBid.length) { %>
+        <div class="flash warn">
+          Drafted, but ESPN didn't report a bid amount for these players — set their price manually:
+          <%= pricing.stats.auctionNoBid.join(', ') %>.
+        </div>
+      <% } %>
+
+      <% if (pricing.stats.unmatchedTeams && pricing.stats.unmatchedTeams.length) { %>
+        <div class="flash warn">
+          <%= pricing.stats.unmatchedTeams.length %> ESPN team(s) aren't mapped to a site team yet,
+          so their players were skipped. Map them in step 2 above, then set prices again.
+        </div>
+      <% } %>
+
+      <% pricing.teams.forEach(function(t){ %>
+        <h3 style="margin:14px 0 6px"><%= t.team %></h3>
+        <table class="teams">
+          <thead><tr><th>Player</th><th>Terms</th><th>Why</th></tr></thead>
+          <tbody>
+            <% t.offers.forEach(function(o){ %>
+              <tr>
+                <td><strong><%= o.player_name %></strong></td>
+                <td>
+                  <% if (o.acq_type === 'auction') { %>Auction · $<%= o.auction_price %>/yr · 1–3 yrs
+                  <% } else { %>Waiver · $11 / $15 · 1–2 yrs<% } %>
+                </td>
+                <td class="hint"><%= o.reason %></td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      <% }); %>
+      <p class="hint">These terms now appear on each team page (and the admin team editor). You can
+        edit any player's terms before they're signed.</p>
     </div>
   <% } %>
 </div>

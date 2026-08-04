@@ -367,13 +367,33 @@ router.post('/espn/map', requireAdmin, async (req, res) => {
     for (const st of siteTeams) {
       if (st.espn_team_id) siteByEspnId.set(String(st.espn_team_id), st.id);
     }
-    const rows = espnTeams.map(et => ({
-      espnId: et.espnId,
-      espnName: et.name,
-      record: et.record,
-      currentSiteId: siteByEspnId.get(String(et.espnId)) || null,
-      suggestedSiteId: siteByEspnId.get(String(et.espnId)) || suggestSiteTeamId(et, siteTeams)
-    }));
+    // Pre-fill each ESPN team's dropdown, but never suggest the SAME site team
+    // for two ESPN teams — a duplicate pre-fill is the main way a bad mapping
+    // gets saved (two teams end up pointing at one site team). Existing saved
+    // matches always win; a fuzzy-name suggestion is only used if that site
+    // team hasn't already been claimed above.
+    const claimed = new Set();
+    for (const st of siteTeams) {
+      if (st.espn_team_id) claimed.add(String(st.id)); // already-mapped site teams are taken
+    }
+    const rows = espnTeams.map(et => {
+      const saved = siteByEspnId.get(String(et.espnId)) || null;
+      let suggestion = saved;
+      if (!suggestion) {
+        const guess = suggestSiteTeamId(et, siteTeams);
+        if (guess && !claimed.has(String(guess))) {
+          suggestion = guess;
+          claimed.add(String(guess));
+        }
+      }
+      return {
+        espnId: et.espnId,
+        espnName: et.name,
+        record: et.record,
+        currentSiteId: saved,
+        suggestedSiteId: suggestion
+      };
+    });
     res.render('admin/espn', {
       ...espnHomeData(),
       mapping: { leagueName: lgName, season, rows, siteTeams },
@@ -388,8 +408,47 @@ router.post('/espn/map', requireAdmin, async (req, res) => {
 
 // Save the chosen mappings. We reset every team's mapping first, then apply
 // the selected pairs, so unselecting a team clears it.
+//
+// A site team may be matched to at most ONE ESPN team (and vice-versa). If the
+// same site team is picked for two ESPN teams we must NOT save — otherwise the
+// second pick silently overwrites the first, leaving one site team showing the
+// wrong roster and another team unmapped (skipped by the sync). Instead we
+// reject the save, keep the existing mapping untouched, and explain the clash.
 router.post('/espn/map/save', requireAdmin, (req, res) => {
-  const map = req.body.map || {}; // { espnId: siteTeamId }
+  const rawMap = req.body.map || {}; // { 't<espnId>': siteTeamId }
+
+  // The form keys are prefixed with 't' (e.g. map[t5]) ON PURPOSE. ESPN team
+  // ids are small integers (1–12); if the keys were bare numbers the form
+  // parser (qs) would treat `map` as an ARRAY, compact it, and silently discard
+  // the real ESPN ids — mapping every team to the wrong ESPN roster. The prefix
+  // forces it to stay a keyed object. Strip the prefix back to the numeric id.
+  const map = {}; // { espnId: siteTeamId }
+  for (const [key, siteId] of Object.entries(rawMap)) {
+    const espnId = String(key).replace(/^\D+/, ''); // drop the leading 't'
+    if (espnId) map[espnId] = siteId;
+  }
+
+  // Collect the ESPN teams pointing at each chosen site team.
+  const espnIdsBySite = new Map(); // siteId -> [espnId, ...]
+  for (const [espnId, siteId] of Object.entries(map)) {
+    if (!siteId) continue;
+    if (!espnIdsBySite.has(siteId)) espnIdsBySite.set(siteId, []);
+    espnIdsBySite.get(siteId).push(espnId);
+  }
+
+  const dupes = [...espnIdsBySite.entries()].filter(([, espnIds]) => espnIds.length > 1);
+  if (dupes.length) {
+    const nameById = new Map(
+      db.prepare('SELECT id, name FROM teams').all().map(t => [String(t.id), t.name])
+    );
+    const detail = dupes
+      .map(([siteId, espnIds]) => `"${nameById.get(String(siteId)) || 'a site team'}" is matched to ${espnIds.length} ESPN teams`)
+      .join('; ');
+    return res.redirect('/admin/espn?error=' + encodeURIComponent(
+      `Each site team can only match one ESPN team. ${detail}. Please give each ESPN team a different site team (or "skip") and save again. Your previous matches were left unchanged.`
+    ));
+  }
+
   const clear = db.prepare('UPDATE teams SET espn_team_id = NULL');
   const setMap = db.prepare('UPDATE teams SET espn_team_id = ? WHERE id = ?');
   clear.run();
@@ -407,6 +466,28 @@ router.post('/espn/sync', requireAdmin, async (req, res) => {
       ...espnHomeData(),
       mapping: null,
       report,
+      error: null,
+      flash: null
+    });
+  } catch (e) {
+    res.redirect('/admin/espn?error=' + encodeURIComponent(e.message));
+  }
+});
+
+// Set contract prices straight from ESPN.
+// Reads each "On ESPN Roster" player's acquisition type + auction bid from the
+// same ESPN feed the sync uses: drafted & held -> auction price (1–3 yrs);
+// everyone else (waivers / trade / free agency) -> waiver $11/$15 (1–2 yrs).
+// Contract / NCAA / Taxi players are never touched. Offers are upserted so the
+// sign buttons show the right terms; the commissioner can edit any before signing.
+router.post('/espn/pricing', requireAdmin, async (req, res) => {
+  try {
+    const pricingReport = await espnSync.priceFromEspn();
+    res.render('admin/espn', {
+      ...espnHomeData(),
+      mapping: null,
+      report: null,
+      pricing: pricingReport,
       error: null,
       flash: null
     });

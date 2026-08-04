@@ -74,18 +74,19 @@ router.post('/team/:slug/moves/drop/:pid', requireOffseason, (req, res) => {
 router.post('/team/:slug/moves/taxi-to-ncaac/:pid', requireOffseason, (req, res) => {
   backToTeam(res, req.team.slug, moves.taxiToNcaac(req.team.id, req.params.pid));
 });
-router.post('/team/:slug/moves/eligible/:pid', requireOffseason, (req, res) => {
-  backToTeam(res, req.team.slug, moves.toggleEligible(req.team.id, req.params.pid));
-});
+// Note: marking a player eligible is a COMMISSIONER-ONLY action, so there is
+// deliberately no public 'eligible' route here (see routes/admin.js). Team
+// pages can only promote players the commissioner has already marked eligible.
 router.post('/team/:slug/moves/ncaa-to-taxi/:pid', requireOffseason, (req, res) => {
   backToTeam(res, req.team.slug, moves.ncaaToTaxi(req.team.id, req.params.pid));
 });
 router.post('/team/:slug/moves/drop-ncaac/:pid', requireOffseason, (req, res) => {
   backToTeam(res, req.team.slug, moves.dropNcaac(req.team.id, req.params.pid));
 });
-router.post('/team/:slug/moves/offer', requireOffseason, (req, res) => {
-  backToTeam(res, req.team.slug, moves.saveOffer(req.team.id, req.body));
-});
+// Note: setting a player's contract terms (the "offer") is a COMMISSIONER-ONLY
+// action, so there is deliberately no public 'offer' route here (see
+// routes/admin.js). Team pages can only sign a player on terms the commissioner
+// has already set — the team still chooses the number of years.
 router.post('/team/:slug/moves/sign', requireOffseason, (req, res) => {
   backToTeam(res, req.team.slug, moves.signPlayer(req.team.id, req.body));
 });

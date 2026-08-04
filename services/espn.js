@@ -15,8 +15,11 @@
 const ESPN_HOST = 'https://lm-api-reads.fantasy.espn.com';
 
 function leagueUrl(leagueId, season) {
+  // mDraftDetail adds the auction draft results (bid amount per pick);
+  // mRoster entries carry each player's acquisitionType (DRAFT / ADD / TRADE),
+  // which is what tells us auction vs. waiver contracts.
   return `${ESPN_HOST}/apis/v3/games/ffl/seasons/${season}/segments/0/leagues/${leagueId}`
-    + '?view=mTeam&view=mRoster&view=mSettings';
+    + '?view=mTeam&view=mRoster&view=mSettings&view=mDraftDetail';
 }
 
 // Fetch a (public) league. Throws a friendly Error on failure.
@@ -89,6 +92,46 @@ function parseTeams(data) {
 
 function leagueName(data) {
   return (data.settings && data.settings.name) || '';
+}
+
+// ---- Contract-pricing inputs ----------------------------------------------
+// Two pure extractors that turn a raw ESPN payload (fetched with the
+// mRoster + mDraftDetail views) into the minimal facts the pricing engine
+// needs. Kept here, next to fetchLeague, so all ESPN-shape knowledge lives in
+// one file and the pricing engine stays payload-agnostic + unit-testable.
+
+// One row per rostered player, across every team: who owns them now, how they
+// were acquired (DRAFT / ADD / TRADE / ...), and their ESPN player id.
+function parseRosterEntries(data) {
+  const out = [];
+  for (const t of (data.teams || [])) {
+    const entries = (t.roster && t.roster.entries) || [];
+    for (const e of entries) {
+      const player = e.playerPoolEntry && e.playerPoolEntry.player;
+      const name = player && player.fullName;
+      if (!name) continue;
+      out.push({
+        espnTeamId: t.id,
+        playerId: e.playerId != null ? e.playerId : (player && player.id),
+        playerName: name,
+        acquisitionType: e.acquisitionType || ''
+      });
+    }
+  }
+  return out;
+}
+
+// One row per auction draft pick: which team drafted the player and for how
+// much. bidAmount is the salary-cap auction price we want for a DRAFT contract.
+function parseDraftPicks(data) {
+  const picks = (data.draftDetail && data.draftDetail.picks) || [];
+  return picks
+    .filter(p => p && p.playerId != null)
+    .map(p => ({
+      playerId: p.playerId,
+      teamId: p.teamId,
+      bidAmount: p.bidAmount != null ? p.bidAmount : null
+    }));
 }
 
 // ---- All-time franchise records -------------------------------------------
@@ -232,5 +275,6 @@ function planRosterMerge(espnPlayerNames, sitePlayers, manualSections, contractS
 module.exports = {
   leagueUrl, fetchLeague, normalizeName, espnTeamName,
   parseTeams, leagueName, suggestSiteTeamId, planRosterMerge,
+  parseRosterEntries, parseDraftPicks,
   historyUrl, fetchLeagueHistory, teamRecords, aggregateAllTime, formatRecord
 };
