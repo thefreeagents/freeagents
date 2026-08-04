@@ -1,7 +1,7 @@
 // Public-facing routes: home/teams, single team, rules
 const express = require('express');
 const { marked } = require('marked');
-const { db, SECTIONS } = require('../db/db');
+const { db, DISPLAY_SECTIONS } = require('../db/db');
 
 const router = express.Router();
 
@@ -19,12 +19,16 @@ router.get('/team/:slug', (req, res) => {
   const team = db.prepare('SELECT * FROM teams WHERE slug = ?').get(req.params.slug);
   if (!team) return res.status(404).render('404');
   const players = db.prepare('SELECT * FROM players WHERE team_id = ? ORDER BY sort_order, id').all(team.id);
-  const roster = SECTIONS.map(s => ({
+  const roster = DISPLAY_SECTIONS.map(s => ({
     ...s,
     players: players.filter(p => p.section === s.key)
   }));
   const champs = (team.championships || '').split(',').map(c => c.trim()).filter(Boolean);
-  res.render('team', { team, roster, champs, active: 'teams' });
+  // Off-season transaction history (read-only for visitors).
+  const transactions = db.prepare(
+    'SELECT kind, player_name, summary, undone, created_at FROM transactions WHERE team_id = ? ORDER BY id DESC'
+  ).all(team.id);
+  res.render('team', { team, roster, champs, transactions, active: 'teams' });
 });
 
 // Old bookmark support: /rules -> /page/rules
