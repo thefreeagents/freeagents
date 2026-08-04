@@ -164,8 +164,8 @@
           <div class="os-row">
             <span class="os-name"><%= p.name %> <span class="tag ok">eligible</span></span>
             <div class="os-choices" role="radiogroup" aria-label="<%= p.name %>">
-              <label class="os-opt"><input type="radio" name="ncaa_<%= p.id %>" value="keep" checked
-                       data-player="<%= p.name %>" data-move=""> Keep</label>
+              <input type="radio" name="ncaa_<%= p.id %>" value="keep" checked hidden
+                     data-player="<%= p.name %>" data-move="">
               <label class="os-opt"><input type="radio" name="ncaa_<%= p.id %>" value="activate"
                        data-player="<%= p.name %>" data-move="<%= costLabel('activate to NCAA Contracts', p.contracts) %>"> <%= costLabel('Activate', p.contracts) %></label>
               <label class="os-opt"><input type="radio" name="ncaa_<%= p.id %>" value="taxi"
