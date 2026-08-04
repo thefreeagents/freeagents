@@ -15,7 +15,7 @@
         <% if (t.owner) { %><p class="owner"><%= t.owner %></p><% } %>
         <% var champs = (t.championships||'').split(',').map(function(c){return c.trim();}).filter(Boolean); %>
         <% if (champs.length) { %>
-          <p class="rings"><img class="rings-trophy" src="/static/img/trophy.svg" alt="" /><%= champs.length %>x champ (<%= champs.join(', ') %>)</p>
+          <p class="rings">🏆 <%= champs.length %>x champ (<%= champs.join(', ') %>)</p>
         <% } %>
       </div>
     </a>

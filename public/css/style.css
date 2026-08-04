@@ -274,3 +274,28 @@ body{
 .txn-feed li.txn-group.undone{opacity:.6}
 .txn-feed li.txn-group .txn-items{list-style:disc;padding-left:20px;margin:0}
 .txn-feed li.txn-group .txn-items li.undone{text-decoration:line-through}
+
+/* ============ Phone / small-screen tuning ============ */
+/* Safety: no image may exceed its container width. */
+img{max-width:100%}
+
+@media (max-width:600px){
+  /* Roomier tap padding, keep content off the edges */
+  .wrap{padding:20px 12px 48px}
+
+  /* Team logo cards: show the WHOLE image (no crop) scaled to the card width */
+  .team-grid{grid-template-columns:1fr;gap:16px}
+  .team-card-art{height:auto;min-height:120px;padding:8px}
+  .team-card-art img{height:auto;max-height:260px;object-fit:contain}
+
+  /* Team-page banner logo: scale down, never crop */
+  .team-hero{max-width:100%}
+  .team-hero img{max-height:300px;object-fit:contain}
+
+  /* Player cards: show full photo scaled to the card, don't lock a tall height */
+  .player-grid{grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px;padding:12px}
+  .player-img{height:auto;max-height:150px;object-fit:contain}
+
+  /* Site banner a touch shorter on phones */
+  .banner-img{max-height:220px}
+}
