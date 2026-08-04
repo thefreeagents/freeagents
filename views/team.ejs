@@ -5,8 +5,9 @@
 <div class="team-header">
   <% if (team.image) { %>
     <div class="team-hero"><img src="/uploads/<%= team.image %>" alt="<%= team.name %>" /></div>
+  <% } else { %>
+    <h2 class="team-name-plain"><%= team.name %></h2>
   <% } %>
-  <h2 class="team-name-burst"><%= team.name %></h2>
   <% if (team.owner) { %><p class="team-owner">Owner: <strong><%= team.owner %></strong></p><% } %>
   <% if (team.tagline) { %><p class="team-tagline"><%= team.tagline %></p><% } %>
   <% if (champs.length) { %>
@@ -15,6 +16,26 @@
     </div>
   <% } %>
 </div>
+
+<% if ((team.all_time_record && team.all_time_record.trim()) || (team.all_time_pf && team.all_time_pf.trim()) || team.all_time_seasons) { %>
+  <div class="alltime">
+    <h3 class="alltime-title">All-Time Record</h3>
+    <div class="alltime-stats">
+      <% if (team.all_time_record && team.all_time_record.trim()) { %>
+        <div class="stat"><span class="num"><%= team.all_time_record %></span><span class="lbl">W–L</span></div>
+      <% } %>
+      <% if (champs.length) { %>
+        <div class="stat"><span class="num"><%= champs.length %></span><span class="lbl">Titles</span></div>
+      <% } %>
+      <% if (team.all_time_seasons) { %>
+        <div class="stat"><span class="num"><%= team.all_time_seasons %></span><span class="lbl">Seasons</span></div>
+      <% } %>
+      <% if (team.all_time_pf && team.all_time_pf.trim()) { %>
+        <div class="stat"><span class="num"><%= team.all_time_pf %></span><span class="lbl">Points For</span></div>
+      <% } %>
+    </div>
+  </div>
+<% } %>
 
 <% roster.forEach(function(s){ %>
   <% if (s.players.length) { %>
@@ -42,6 +63,20 @@
 <% var anyPlayers = roster.some(function(s){return s.players.length;}); %>
 <% if (!anyPlayers) { %>
   <p class="empty-note">No roster added yet. <% if (isAdmin) { %><a href="/admin/teams/<%= team.id %>">Add players &rarr;</a><% } %></p>
+<% } %>
+
+<% if (typeof transactions !== 'undefined' && transactions.length) { %>
+  <section class="roster-section section-blue offseason-log">
+    <h3 class="section-title">Offseason Transactions</h3>
+    <ul class="txn-feed">
+      <% transactions.forEach(function(tx){ %>
+        <li class="<%= tx.undone ? 'undone' : '' %>">
+          <span class="txn-text"><%= tx.summary %></span>
+          <span class="txn-when"><%= tx.created_at %><% if (tx.undone) { %> · undone<% } %></span>
+        </li>
+      <% }); %>
+    </ul>
+  </section>
 <% } %>
 
 <% if (team.updated_at) { %><p class="updated">Updated <%= team.updated_at %></p><% } %>

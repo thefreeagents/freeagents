@@ -1,0 +1,120 @@
+<%- include('partials/head', { nav: 'espn' }) %>
+
+<h1 class="admin-h1">ESPN Sync</h1>
+<p class="admin-sub">Pull live rosters and standings from your ESPN league. This only fills the
+  <strong>“On ESPN Roster”</strong> section — your Contract, NCAA Contract, Taxi Squad and NCAA Player
+  lists are never touched.</p>
+
+<% if (flash) { %>
+  <div class="flash">
+    <% if (flash==='settings') { %>League settings saved.
+    <% } else if (flash==='mapped') { %>Team mapping saved.
+    <% } else { %>Saved!<% } %>
+  </div>
+<% } %>
+<% if (error) { %><div class="flash warn"><%= error %></div><% } %>
+
+<!-- 1. League settings -------------------------------------------------->
+<div class="card">
+  <h2>1. League</h2>
+  <form method="post" action="/admin/espn/settings">
+    <div class="field">
+      <label>ESPN League ID</label>
+      <input type="text" name="league_id" value="<%= settings.league_id || '' %>" placeholder="e.g. 374586" />
+      <p class="hint">Found in your ESPN league URL. The league must be set to <strong>Public</strong>.</p>
+    </div>
+    <div class="field">
+      <label>Season</label>
+      <input type="text" name="season" value="<%= settings.season || '' %>" placeholder="<%= new Date().getFullYear() %>" style="max-width:140px" />
+    </div>
+    <button class="btn" type="submit">Save league settings</button>
+  </form>
+</div>
+
+<!-- 2. Map ESPN teams to site teams ------------------------------------->
+<div class="card">
+  <h2>2. Match teams</h2>
+  <p class="hint">ESPN team names don’t always match your site team names, so match them up once.
+    Click “Load ESPN teams” to fetch the current league and pick the matching site team for each.</p>
+  <form method="post" action="/admin/espn/map">
+    <button class="btn green" type="submit">Load ESPN teams</button>
+  </form>
+
+  <% if (mapping) { %>
+    <form method="post" action="/admin/espn/map/save" style="margin-top:16px">
+      <p><strong>League:</strong> <%= mapping.leagueName || '—' %> &nbsp;·&nbsp; <strong>Season:</strong> <%= mapping.season %></p>
+      <table class="teams">
+        <thead><tr><th>ESPN team</th><th>Record</th><th>Matches site team</th></tr></thead>
+        <tbody>
+          <% mapping.rows.forEach(function(r){ %>
+            <tr>
+              <td><strong><%= r.espnName %></strong></td>
+              <td><%= r.record %></td>
+              <td>
+                <select name="map[<%= r.espnId %>]">
+                  <option value="">— not in league / skip —</option>
+                  <% mapping.siteTeams.forEach(function(st){ %>
+                    <option value="<%= st.id %>" <%= String(r.suggestedSiteId)===String(st.id) ? 'selected' : '' %>><%= st.name %></option>
+                  <% }); %>
+                </select>
+              </td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+      <button class="btn" type="submit" style="margin-top:12px">Save matches</button>
+    </form>
+  <% } %>
+</div>
+
+<!-- 3. Run the sync ----------------------------------------------------->
+<div class="card">
+  <h2>3. Sync now</h2>
+  <p class="hint">Updates each matched team’s record, points, and “On ESPN Roster” list.
+    <% if (settings.last_sync) { %>Last synced: <strong><%= new Date(settings.last_sync).toLocaleString() %></strong>.<% } else { %>Never synced yet.<% } %>
+  </p>
+  <form method="post" action="/admin/espn/sync">
+    <button class="btn green big" type="submit">Sync from ESPN</button>
+  </form>
+
+  <% if (report) { %>
+    <div style="margin-top:18px">
+      <p><strong>Synced <%= report.leagueName || 'league' %></strong> (<%= report.season %>) on <%= report.when %>.</p>
+
+      <% if (report.unmapped && report.unmapped.length) { %>
+        <div class="flash warn">
+          Not matched to an ESPN team (skipped): <%= report.unmapped.join(', ') %>.
+          Use “Match teams” above to link them.
+        </div>
+      <% } %>
+
+      <table class="teams">
+        <thead><tr><th>Site team</th><th>ESPN team</th><th>Record</th><th>On ESPN roster</th><th>Newly added</th><th>Possibly dropped</th></tr></thead>
+        <tbody>
+          <% report.teams.forEach(function(t){ %>
+            <tr>
+              <td><strong><%= t.team %></strong></td>
+              <% if (t.error) { %>
+                <td colspan="5" class="warn-cell"><%= t.error %></td>
+              <% } else { %>
+                <td><%= t.espnTeam %></td>
+                <td><%= t.record %></td>
+                <td><%= t.espnActiveCount %></td>
+                <td><%= (t.added && t.added.length) ? t.added.join(', ') : '—' %></td>
+                <td>
+                  <% if (t.possiblyDropped && t.possiblyDropped.length) { %>
+                    <%= t.possiblyDropped.map(function(p){ return p.name; }).join(', ') %>
+                  <% } else { %>—<% } %>
+                </td>
+              <% } %>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+      <p class="hint">“Possibly dropped” players are only listed here for your review — the sync never removes
+        anyone from your contract lists automatically.</p>
+    </div>
+  <% } %>
+</div>
+
+<%- include('partials/foot') %>

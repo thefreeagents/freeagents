@@ -5,6 +5,19 @@
 
 <% if (flash) { %><div class="flash"><%= flash==='deleted' ? 'Team deleted.' : 'Saved!' %></div><% } %>
 
+<div class="offseason-bar <%= offseasonOn ? 'on' : '' %>">
+  <div>
+    <strong>Off-Season Mode</strong>
+    <span class="state"><%= offseasonOn ? 'ON' : 'off' %></span>
+    <p class="hint">When on, each team's edit page shows the off-season move buttons (drop / promote / sign). Turn it off during the season to lock rosters.</p>
+  </div>
+  <form method="post" action="/admin/offseason/toggle">
+    <button class="btn <%= offseasonOn ? 'gray' : 'green' %>" type="submit">
+      <%= offseasonOn ? 'Turn OFF' : 'Turn ON' %>
+    </button>
+  </form>
+</div>
+
 <div class="card">
   <table class="teams">
     <thead><tr><th>Team</th><th>Owner</th><th>Championships</th><th>Updated</th><th></th></tr></thead>
