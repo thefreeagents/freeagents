@@ -37,6 +37,8 @@ textarea{resize:vertical;line-height:1.5}
 .btn.gray{background:#7a828f}
 .btn.danger{background:#b3261e}
 .btn.small{padding:7px 12px;font-size:12px}
+.btn.big{padding:14px 26px;font-size:16px}
+.warn-cell{color:#b3261e;font-style:italic}
 .btnrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:8px}
 
 table.teams{width:100%;border-collapse:collapse}
@@ -85,3 +87,49 @@ table.teams tr:hover td{background:#fafbfc}
 .checkline input{width:auto;margin:0}
 .btn.danger{color:#b3261e;background:#f3e6e5;margin-top:14px}
 .btn.danger:hover{background:#f7d7d4}
+.btn[disabled]{opacity:.45;cursor:not-allowed;filter:none}
+
+/* Off-Season Mode */
+.offseason-bar{display:flex;align-items:center;justify-content:space-between;gap:16px;
+  background:#fff;border:1px solid #e3e6ea;border-left:5px solid #7a828f;border-radius:10px;
+  padding:14px 18px;margin-bottom:18px}
+.offseason-bar.on{border-left-color:#2e9e4f;background:#f3fbf5}
+.offseason-bar .state{display:inline-block;margin-left:8px;font-weight:800;letter-spacing:1px;
+  text-transform:uppercase;font-size:12px;color:#7a828f}
+.offseason-bar.on .state{color:#2e9e4f}
+.offseason-bar .hint{margin:6px 0 0}
+.offseason-bar form{margin:0}
+
+.offseason-panel{border-left:5px solid #2e9e4f}
+.offseason-panel h2{color:#1f7a3d}
+.os-group{padding:14px 0;border-top:1px solid #eef0f2}
+.os-group:first-of-type{border-top:none}
+.os-group h3{margin:0 0 6px;font-size:16px}
+.os-group h3 .cnt{font-weight:600;color:#7a828f;font-size:13px;margin-left:6px}
+.os-row{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:8px 10px;border:1px solid #eef0f2;border-radius:8px;margin-top:6px;flex-wrap:wrap}
+.os-name{font-weight:700}
+.os-actions{display:flex;gap:8px;flex-wrap:wrap}
+.os-actions form{margin:0}
+.os-empty{color:#8a919c;font-style:italic;margin:4px 0 0}
+.os-espn{border:1px solid #e3e6ea;border-radius:8px;padding:10px 12px;margin-top:8px}
+.os-espn-head{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.os-offer,.os-sign{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:6px}
+.os-offer label,.os-sign label{display:flex;align-items:center;gap:6px;font-weight:600;font-size:13px}
+.os-offer select,.os-sign select,.os-offer input{width:auto;margin:0}
+.tag{display:inline-block;background:#eef0f2;color:#5b6472;font-size:12px;font-weight:700;
+  padding:2px 8px;border-radius:12px}
+.tag.ok{background:#e6f5ec;color:#1f7a3d}
+.tag.warn{background:#fdeceb;color:#b3261e}
+
+/* Offseason transactions log */
+.txn-card{border-left:5px solid #1c62d6}
+.txn-list{list-style:none;margin:8px 0 0;padding:0}
+.txn{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:10px 12px;border:1px solid #eef0f2;border-radius:8px;margin-top:6px}
+.txn.is-undone{opacity:.6}
+.txn.is-undone .txn-summary{text-decoration:line-through}
+.txn-main{display:flex;flex-direction:column;gap:2px}
+.txn-summary{font-weight:600}
+.txn-date{font-size:12px;color:#8a919c}
+.txn-side form{margin:0}

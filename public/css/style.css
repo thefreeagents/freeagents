@@ -7,6 +7,8 @@
   --red:#e23a25;
   --green:#8ac36a;
   --green-deep:#6fae4f;
+  --blue:#4aa3e0;
+  --blue-deep:#2f88c8;
   --ink:#141414;
   --paper:#f4f1e8;
 }
@@ -103,6 +105,18 @@ body{
   border-radius:10px;transform:rotate(-1.5deg);box-shadow:6px 6px 0 rgba(0,0,0,.25);
   -webkit-text-stroke:1.5px #2a1500;
 }
+.team-name-plain{font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:1px;
+  color:var(--navy);font-size:clamp(26px,5vw,44px);margin:0 0 6px}
+.alltime{max-width:560px;margin:0 auto 22px;background:var(--navy);border:4px solid var(--ink);
+  border-radius:12px;box-shadow:5px 5px 0 rgba(0,0,0,.2);padding:14px 18px 18px;text-align:center}
+.alltime-title{font-family:'Bangers',cursive;letter-spacing:2px;color:var(--yellow);margin:0 0 10px;
+  font-size:24px;text-transform:uppercase}
+.alltime-stats{display:flex;justify-content:center;gap:14px;flex-wrap:wrap}
+.alltime-stats .stat{background:#fff;border:3px solid var(--ink);border-radius:10px;
+  padding:8px 14px;min-width:78px}
+.alltime-stats .num{display:block;font-family:'Barlow Condensed',sans-serif;font-weight:700;
+  font-size:26px;color:var(--navy);line-height:1.1}
+.alltime-stats .lbl{display:block;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#6b7280;margin-top:2px}
 .team-owner{margin:16px 0 2px;font-size:18px}
 .team-tagline{margin:2px 0;color:#555;font-style:italic}
 .trophies{margin-top:12px;display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
@@ -117,6 +131,17 @@ body{
 .section-yellow .section-title{background:var(--yellow)}
 .section-green .section-title{background:var(--green)}
 .section-green{background:#eef6e6}
+.section-blue .section-title{background:var(--blue);color:#fff}
+.section-blue{background:#eaf4fc}
+.section-blue .player-card{background:#f2f9ff}
+.section-blue .player-contracts span{color:#1c5a86}
+.offseason-log .txn-feed{list-style:none;margin:0;padding:14px}
+.offseason-log .txn-feed li{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  padding:9px 12px;background:#fff;border:2px solid var(--ink);border-radius:8px;margin-bottom:8px}
+.offseason-log .txn-feed li.undone{opacity:.55}
+.offseason-log .txn-feed li.undone .txn-text{text-decoration:line-through}
+.offseason-log .txn-text{font-weight:600;color:var(--ink)}
+.offseason-log .txn-when{color:#6b7280;font-size:13px;white-space:nowrap}
 .player-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px;padding:16px}
 .player-card{background:#fff;border:2px solid var(--ink);border-radius:8px;padding:10px;text-align:center}
 .section-green .player-card{background:#f6fbf0}
