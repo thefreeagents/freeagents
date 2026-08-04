@@ -27,7 +27,8 @@ const settings = {
   site_title: 'THE FREE AGENTS',
   site_subtitle: 'A Dynasty Fantasy Football League',
   banner_image: '',            // admin can upload one; otherwise a CSS banner is used
-  footer_text: 'The Free Agents \u00b7 Est. 2013'
+  footer_text: 'The Free Agents \u00b7 Est. 2013',
+  espn_league_id: '374586'     // The Free Agents ESPN league (public); editable in admin
 };
 const upsertSetting = db.prepare(
   'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO NOTHING'
