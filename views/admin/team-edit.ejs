@@ -102,6 +102,22 @@
      var ncaacPlayers = (roster.find(function(r){return r.key==='ncaa_contract';}) || {players:[]}).players;
      var taxiSpots = caps.taxi - counts.taxi;
      var mbase = '/admin/teams/' + team.id;
+     // Pull the player's current-season price from their contract lines
+     // (e.g. "2026: $12") to show the cost of a promote/retain/activate.
+     var curYear = String(typeof startYear !== 'undefined' ? startYear : new Date().getFullYear());
+     function priceFor(contracts){
+       if (!contracts) return '';
+       var found = '';
+       contracts.split(/\r?\n/).forEach(function(line){
+         var mm = line.match(/(\d{4})\s*:\s*\$?\s*(\d+)/);
+         if (mm && mm[1] === curYear) found = '$' + mm[2];
+       });
+       return found;
+     }
+     function costLabel(base, contracts){
+       var pr = priceFor(contracts);
+       return pr ? (base + ' (' + pr + ')') : base;
+     }
 %>
 <div class="card offseason-panel" style="margin-top:26px">
   <h2>Off-Season Moves</h2>
@@ -128,9 +144,9 @@
           <span class="os-name"><%= p.name %></span>
           <div class="os-choices" role="radiogroup" aria-label="<%= p.name %>">
             <label class="os-opt"><input form="osform-admin" type="radio" name="taxi_<%= p.id %>" value="keep" checked
-                     data-player="<%= p.name %>" data-move=""> Keep</label>
+                     data-player="<%= p.name %>" data-move=""> Taxi</label>
             <label class="os-opt"><input form="osform-admin" type="radio" name="taxi_<%= p.id %>" value="promote"
-                     data-player="<%= p.name %>" data-move="promote to NCAA Contracts"> Promote to NCAA Contracts</label>
+                     data-player="<%= p.name %>" data-move="<%= costLabel('promote to NCAA Contracts', p.contracts) %>"> <%= costLabel('Promote to NCAA Contracts', p.contracts) %></label>
             <label class="os-opt danger"><input form="osform-admin" type="radio" name="taxi_<%= p.id %>" value="drop"
                      data-player="<%= p.name %>" data-move="drop from Taxi Squad"> Drop</label>
           </div>
@@ -150,7 +166,7 @@
           <span class="os-name"><%= p.name %></span>
           <div class="os-choices" role="radiogroup" aria-label="<%= p.name %>">
             <label class="os-opt"><input form="osform-admin" type="radio" name="ncaac_<%= p.id %>" value="keep" checked
-                     data-player="<%= p.name %>" data-move=""> Retain</label>
+                     data-player="<%= p.name %>" data-move=""> <%= costLabel('Retain', p.contracts) %></label>
             <label class="os-opt danger"><input form="osform-admin" type="radio" name="ncaac_<%= p.id %>" value="drop"
                      data-player="<%= p.name %>" data-move="drop from NCAA Contracts"> Drop</label>
           </div>
@@ -177,7 +193,7 @@
             <label class="os-opt"><input form="osform-admin" type="radio" name="ncaa_<%= p.id %>" value="keep" checked
                      data-player="<%= p.name %>" data-move=""> Keep</label>
             <label class="os-opt"><input form="osform-admin" type="radio" name="ncaa_<%= p.id %>" value="activate"
-                     data-player="<%= p.name %>" data-move="activate to NCAA Contracts"> Activate</label>
+                     data-player="<%= p.name %>" data-move="<%= costLabel('activate to NCAA Contracts', p.contracts) %>"> <%= costLabel('Activate', p.contracts) %></label>
             <label class="os-opt"><input form="osform-admin" type="radio" name="ncaa_<%= p.id %>" value="taxi"
                      data-player="<%= p.name %>" data-move="promote to Taxi Squad"> Taxi</label>
             <label class="os-opt danger"><input form="osform-admin" type="radio" name="ncaa_<%= p.id %>" value="drop"
