@@ -23,6 +23,9 @@ const storage = multer.diskStorage({
   }
 });
 const upload = multer({ storage, limits: { fileSize: 8 * 1024 * 1024 } });
+// In-memory upload for the ESPN Draft Recap PDF — we parse it on the fly for
+// auction prices and never need to keep the file, so no disk write.
+const uploadMem = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } });
 
 // ---- Auth guard -----------------------------------------------------------
 function requireAdmin(req, res, next) {
@@ -497,6 +500,29 @@ router.post('/espn/pricing', requireAdmin, async (req, res) => {
       mapping: null,
       report: null,
       pricing: pricingReport,
+      error: null,
+      flash: null
+    });
+  } catch (e) {
+    res.redirect('/admin/espn?error=' + encodeURIComponent(e.message));
+  }
+});
+
+// Set contract prices from an uploaded ESPN "Draft Recap" PDF. This is the
+// reliable path for a PRIVATE league, where ESPN's API hides auction bids (so
+// step 4 shows $0). We keep ESPN's DRAFT-vs-free-agency labels and use the PDF
+// only to fill in each drafted player's winning bid, matched by name.
+router.post('/espn/pricing-pdf', requireAdmin, uploadMem.single('recap_pdf'), async (req, res) => {
+  try {
+    if (!req.file || !req.file.buffer || !req.file.buffer.length) {
+      return res.redirect('/admin/espn?error=' + encodeURIComponent('Please choose a Draft Recap PDF to upload.'));
+    }
+    const pricingPdf = await espnSync.priceFromPdf(req.file.buffer);
+    res.render('admin/espn', {
+      ...espnHomeData(),
+      mapping: null,
+      report: null,
+      pricingPdf,
       error: null,
       flash: null
     });

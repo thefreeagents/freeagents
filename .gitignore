@@ -5,3 +5,8 @@ public/uploads/*
 !public/uploads/.gitkeep
 npm-debug.log*
 .DS_Store
+# local database + session store (these live on Render's disk, never in Git)
+*.sqlite
+*.sqlite3
+*.db
+sessions/

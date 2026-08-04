@@ -116,6 +116,78 @@ function computeOffersFromEspn({ rosterEntries = [], draftPicks = [], espnActive
   return { offers, stats };
 }
 
+// --- pure decision engine, PDF-price variant -------------------------------
+//
+// Same shape as computeOffersFromEspn, but the auction price for a DRAFT player
+// comes from a Draft Recap PDF (keyed by normalized NAME) instead of the API's
+// bidAmount (keyed by playerId). We STILL take auction-vs-waiver from ESPN's
+// acquisitionType — that part of the ESPN pull is already correct; the PDF only
+// supplies the dollar amount that the private-league API hides.
+//
+//  rosterEntries : [{ espnTeamId, playerId, playerName, acquisitionType }]
+//  priceByName   : Map|object  normalizedName -> winning auction bid ($)
+//  espnActive    : [{ team_id, name }]  players to price
+//  espnToSiteTeam: Map|object  ESPN team id (string) -> site team id
+//
+// Returns { offers, stats } where stats also carries `matched` (Set of
+// normalized names that got a PDF price) so callers can report leftovers.
+function computeOffersFromRecap({ rosterEntries = [], priceByName, espnActive = [], espnToSiteTeam }) {
+  const toSite = normalizeTeamMap(espnToSiteTeam);
+  const prices = new Map();
+  if (priceByName instanceof Map) {
+    for (const [k, v] of priceByName.entries()) prices.set(String(k), v);
+  } else if (priceByName) {
+    for (const k of Object.keys(priceByName)) prices.set(String(k), priceByName[k]);
+  }
+
+  const activeByKey = new Map();
+  for (const a of espnActive) {
+    activeByKey.set(`${a.team_id}|${normalizeName(a.name)}`, a.name);
+  }
+
+  const offers = [];
+  const stats = { auction: 0, waiver: 0, auctionNoBid: [], unmatchedTeams: new Set(), matched: new Set() };
+
+  for (const e of rosterEntries) {
+    const siteId = toSite.get(String(e.espnTeamId));
+    if (siteId == null) { stats.unmatchedTeams.add(e.espnTeamId); continue; }
+
+    const norm = normalizeName(e.playerName);
+    const siteName = activeByKey.get(`${siteId}|${norm}`);
+    if (siteName == null) continue; // not an espn_active player
+
+    const isDraft = String(e.acquisitionType || '').toUpperCase() === 'DRAFT';
+    if (isDraft) {
+      const found = prices.has(norm);
+      const price = found ? prices.get(norm) : 0;
+      if (found) stats.matched.add(norm);
+      if (!(price > 0)) stats.auctionNoBid.push(siteName);
+      offers.push({
+        team_id: siteId,
+        player_name: siteName,
+        acq_type: 'auction',
+        auction_price: price > 0 ? price : 0,
+        reason: price > 0
+          ? `Drafted at auction for $${price} (from Draft Recap PDF)`
+          : 'Drafted at auction, but no price for this name was found in the PDF — please set it'
+      });
+      stats.auction++;
+    } else {
+      offers.push({
+        team_id: siteId,
+        player_name: siteName,
+        acq_type: 'waiver',
+        auction_price: 0,
+        reason: acqReason(e.acquisitionType)
+      });
+      stats.waiver++;
+    }
+  }
+
+  stats.unmatchedTeams = [...stats.unmatchedTeams];
+  return { offers, stats };
+}
+
 // Accept a Map or a plain object for the ESPN->site team mapping and return a
 // Map keyed by string ESPN id.
 function normalizeTeamMap(m) {
@@ -129,4 +201,4 @@ function normalizeTeamMap(m) {
   return out;
 }
 
-module.exports = { computeOffersFromEspn, acqReason };
+module.exports = { computeOffersFromEspn, computeOffersFromRecap, acqReason };

@@ -217,4 +217,78 @@
   <% } %>
 </div>
 
+<!-- 4b. Import auction prices from the Draft Recap PDF (private leagues) --->
+<div class="card">
+  <h2>4b. Import auction prices from a Draft Recap PDF</h2>
+  <p class="hint">If step 4 priced your drafted players at <strong>$0</strong>, your league is almost
+    certainly <strong>private</strong>, so ESPN's feed hides the winning bids. This step gets them a
+    different way: in ESPN open <em>your league → History → the auction season → Draft Recap</em>,
+    print that page to PDF, and upload it here. ESPN still tells us <strong>who</strong> was drafted
+    versus picked up on waivers — the PDF just supplies each drafted player's <strong>price</strong>,
+    matched by name. Run the roster sync (step 3) first.</p>
+  <form method="post" action="/admin/espn/pricing-pdf" enctype="multipart/form-data">
+    <div class="field">
+      <label>ESPN “Draft Recap” PDF</label>
+      <input type="file" name="recap_pdf" accept="application/pdf,.pdf" required />
+    </div>
+    <button class="btn green" type="submit">Import prices from PDF</button>
+  </form>
+
+  <% if (typeof pricingPdf !== 'undefined' && pricingPdf) { %>
+    <div style="margin-top:18px">
+      <div class="flash">
+        Read <strong><%= pricingPdf.recapPlayers %></strong> auction prices from the
+        <% if (pricingPdf.auctionSeason) { %><strong><%= pricingPdf.auctionSeason %></strong> <% } %>Draft
+        Recap PDF (<%= pricingPdf.pages %> page<%= pricingPdf.pages===1?'':'s' %>), then priced
+        <strong><%= pricingPdf.priced %></strong> roster players
+        (<%= pricingPdf.stats.auction %> at auction price, <%= pricingPdf.stats.waiver %> at waiver terms).
+      </div>
+
+      <% if (pricingPdf.stats.auctionNoBid && pricingPdf.stats.auctionNoBid.length) { %>
+        <div class="flash warn">
+          ESPN says these players were drafted, but no matching price was found in the PDF —
+          set their price manually (usually a spelling mismatch): <%= pricingPdf.stats.auctionNoBid.join(', ') %>.
+        </div>
+      <% } %>
+
+      <% if (pricingPdf.stats.unmatchedTeams && pricingPdf.stats.unmatchedTeams.length) { %>
+        <div class="flash warn">
+          <%= pricingPdf.stats.unmatchedTeams.length %> ESPN team(s) aren't mapped to a site team yet,
+          so their players were skipped. Map them in step 2, then import again.
+        </div>
+      <% } %>
+
+      <% if (pricingPdf.warnings && pricingPdf.warnings.length) { %>
+        <div class="flash warn"><%= pricingPdf.warnings.join(' ') %></div>
+      <% } %>
+
+      <% pricingPdf.teams.forEach(function(t){ %>
+        <h3 style="margin:14px 0 6px"><%= t.team %></h3>
+        <table class="teams">
+          <thead><tr><th>Player</th><th>Terms</th><th>Why</th></tr></thead>
+          <tbody>
+            <% t.offers.forEach(function(o){ %>
+              <tr>
+                <td><strong><%= o.player_name %></strong></td>
+                <td>
+                  <% if (o.acq_type === 'auction') { %>Auction · $<%= o.auction_price %>/yr · 1–3 yrs
+                  <% } else { %>Waiver · $11 / $15 · 1–2 yrs<% } %>
+                </td>
+                <td class="hint"><%= o.reason %></td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      <% }); %>
+
+      <% if (pricingPdf.unmatchedRecap && pricingPdf.unmatchedRecap.length) { %>
+        <p class="hint" style="margin-top:12px">Recap prices not applied to a current roster spot
+          (dropped since the auction, or an unmatched name): <%= pricingPdf.unmatchedRecap.join(', ') %>.</p>
+      <% } %>
+      <p class="hint">These terms now appear on each team page and in the admin team editor. You can
+        edit any player's terms before they're signed.</p>
+    </div>
+  <% } %>
+</div>
+
 <%- include('partials/foot') %>

@@ -9,7 +9,9 @@ const {
   parseRosterEntries, parseDraftPicks,
   fetchLeagueHistory, aggregateAllTime, formatRecord
 } = require('./espn');
-const { computeOffersFromEspn } = require('./contractPricing');
+const { computeOffersFromEspn, computeOffersFromRecap } = require('./contractPricing');
+const { normalizeName } = require('./espn');
+const { parseDraftRecapPdf } = require('./draftRecapPdf');
 
 function getSetting(key, fallback = '') {
   const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key);
@@ -219,4 +221,94 @@ async function priceFromEspn() {
   };
 }
 
-module.exports = { fetchEspnTeams, syncLeague, priceFromEspn, getSetting, setSetting, currentSeason, auctionSeason };
+// Set contract prices from an uploaded ESPN "Draft Recap" PDF.
+//
+// This is the reliable path for a PRIVATE league, where ESPN's read API returns
+// the roster (so acquisitionType — DRAFT vs free agency — is already correct)
+// but HIDES the auction bid amounts (priceFromEspn then shows $0 for everyone).
+// So we keep ESPN as the source of truth for WHO was drafted, and use the Draft
+// Recap PDF only to supply the missing dollar amount for those drafted players:
+//   - ESPN says DRAFT  -> AUCTION, price looked up by name from the PDF
+//   - ESPN says ADD / TRADE / waiver / FA -> WAIVER $11/$15 (PDF ignored)
+// Names are matched with the same normalization the API path uses, so
+// "A.J. Brown"/"AJ Brown" and "Jr."/"Sr." suffixes line up. The recap's own team
+// columns are irrelevant (and parse noisily) — we never use them. Keepers are
+// never touched: they're Contract Players, not espn_active. Offers are upserted
+// and stay editable before signing.
+async function priceFromPdf(buffer) {
+  const parsed = await parseDraftRecapPdf(buffer);
+
+  // Winning bid keyed by normalized player name. If the same normalized name
+  // appears twice in the recap (rare), keep the higher bid and note the clash.
+  const priceByName = new Map();
+  const collisions = [];
+  for (const p of parsed.players) {
+    const key = normalizeName(p.name);
+    if (!key) continue;
+    if (priceByName.has(key)) {
+      collisions.push(p.name);
+      priceByName.set(key, Math.max(priceByName.get(key), p.price));
+    } else {
+      priceByName.set(key, p.price);
+    }
+  }
+
+  // Pull the current roster from ESPN for the authoritative DRAFT-vs-FA labels.
+  const leagueId = getSetting('espn_league_id');
+  const season = currentSeason();
+  const data = await fetchLeague(leagueId, season);
+  const rosterEntries = parseRosterEntries(data);
+
+  const siteTeams = db.prepare('SELECT id, name, espn_team_id FROM teams').all();
+  const nameById = new Map(siteTeams.map(t => [t.id, t.name]));
+  const espnToSiteTeam = new Map();
+  for (const st of siteTeams) {
+    if (st.espn_team_id != null) espnToSiteTeam.set(String(st.espn_team_id), st.id);
+  }
+  const espnActive = db.prepare("SELECT team_id, name FROM players WHERE section = 'espn_active'").all();
+
+  const { offers, stats } = computeOffersFromRecap({
+    rosterEntries, priceByName, espnActive, espnToSiteTeam
+  });
+
+  // Recap players whose price was never applied to a drafted roster spot
+  // (dropped since the auction, or a name that didn't match). Informational.
+  const unmatchedRecap = parsed.players
+    .filter(p => !stats.matched.has(normalizeName(p.name)))
+    .map(p => `${p.name} ($${p.price})`);
+
+  const upsert = db.prepare(
+    `INSERT INTO espn_offers (team_id, player_name, acq_type, auction_price, updated_at)
+     VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT(team_id, player_name)
+     DO UPDATE SET acq_type = excluded.acq_type,
+                   auction_price = excluded.auction_price,
+                   updated_at = excluded.updated_at`
+  );
+  const now = new Date().toISOString().slice(0, 10);
+  for (const o of offers) upsert.run(o.team_id, o.player_name, o.acq_type, o.auction_price, now);
+
+  const byTeam = new Map();
+  for (const o of offers) {
+    const key = nameById.get(o.team_id) || `Team ${o.team_id}`;
+    if (!byTeam.has(key)) byTeam.set(key, []);
+    byTeam.get(key).push(o);
+  }
+
+  return {
+    source: 'pdf',
+    leagueName: leagueName(data) || parsed.leagueName || '',
+    season,
+    auctionSeason: parsed.season || '',
+    pages: parsed.pages,
+    recapPlayers: parsed.players.length,
+    priced: offers.length,
+    stats: { auction: stats.auction, waiver: stats.waiver, auctionNoBid: stats.auctionNoBid, unmatchedTeams: stats.unmatchedTeams },
+    collisions,
+    warnings: parsed.warnings,
+    unmatchedRecap,
+    teams: [...byTeam.entries()].map(([team, list]) => ({ team, offers: list }))
+  };
+}
+
+module.exports = { fetchEspnTeams, syncLeague, priceFromEspn, priceFromPdf, getSetting, setSetting, currentSeason, auctionSeason };
