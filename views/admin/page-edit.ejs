@@ -1,0 +1,57 @@
+<%- include('partials/head', { nav: 'pages' }) %>
+
+<div class="page-head">
+  <a class="back" href="/admin/pages">← All pages</a>
+</div>
+
+<h1 class="admin-h1"><%= page.title %></h1>
+<p class="admin-sub">Edit this page below. The text uses simple formatting (Markdown).</p>
+
+<% if (flash) { %><div class="flash">Saved! <a href="/page/<%= page.slug %>" target="_blank">View on site ↗</a></div><% } %>
+
+<form method="post" action="/admin/pages/<%= page.slug %>">
+  <div class="card">
+    <div class="field">
+      <label>Page title</label>
+      <input type="text" name="title" value="<%= page.title %>" />
+    </div>
+
+    <div class="grid2">
+      <div class="field">
+        <label>Menu label</label>
+        <input type="text" name="nav_label" value="<%= page.nav_label || '' %>" placeholder="<%= page.title %>" />
+        <p class="hint">What shows in the top menu. Leave blank to use the page title.</p>
+      </div>
+      <div class="field">
+        <label>Menu order</label>
+        <input type="number" name="nav_order" value="<%= page.nav_order %>" style="width:100px" />
+        <p class="hint">Lower numbers appear first.</p>
+      </div>
+    </div>
+
+    <div class="field">
+      <label class="checkline">
+        <input type="checkbox" name="in_nav" value="1" <%= page.in_nav ? 'checked' : '' %> />
+        Show this page in the top menu
+      </label>
+    </div>
+
+    <div class="field">
+      <label>Content</label>
+      <textarea name="content" rows="24" style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:14px"><%= page.content %></textarea>
+      <p class="hint">
+        Formatting cheatsheet: <code>## Big heading</code>, <code>### Small heading</code>,
+        <code>**bold**</code>, <code>- bullet</code>, and <code>1.</code> for numbered lists.
+        Blank lines separate paragraphs.
+      </p>
+    </div>
+
+    <button class="btn" type="submit">Save page</button>
+  </div>
+</form>
+
+<form method="post" action="/admin/pages/<%= page.slug %>/delete" onsubmit="return confirm('Delete this page? This cannot be undone.');">
+  <button class="btn small gray danger" type="submit">Delete page</button>
+</form>
+
+<%- include('partials/foot') %>

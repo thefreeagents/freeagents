@@ -1,0 +1,87 @@
+/* ============ Admin console styling ============ */
+*{box-sizing:border-box}
+body{margin:0;font-family:'Barlow',system-ui,Arial,sans-serif;background:#eef1f5;color:#1a2233}
+a{color:#1c62d6}
+.admin-top{background:#12233f;color:#fff;padding:0}
+.admin-top .bar{max-width:1000px;margin:0 auto;padding:14px 18px;display:flex;align-items:center;gap:18px}
+.admin-top .brand{font-family:'Bangers',cursive;letter-spacing:1px;font-size:24px;color:#ffd21e;text-decoration:none}
+.admin-top nav{display:flex;gap:16px;margin-left:6px}
+.admin-top nav a{color:#cdd6e6;text-decoration:none;font-weight:600;text-transform:uppercase;font-size:13px;letter-spacing:.5px}
+.admin-top nav a:hover,.admin-top nav a.on{color:#ffd21e}
+.admin-top .spacer{flex:1}
+.admin-top form{margin:0}
+.admin-top .view-site{color:#8fd07a}
+
+.admin-wrap{max-width:1000px;margin:0 auto;padding:26px 18px 70px}
+.admin-h1{font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:1px;font-size:30px;margin:0 0 4px}
+.admin-sub{color:#5b6472;margin:0 0 22px}
+
+.card{background:#fff;border:1px solid #dfe4ea;border-radius:10px;padding:20px 22px;margin-bottom:20px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.card h2{font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:1px;font-size:20px;margin:0 0 14px}
+
+label{display:block;font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:#48505e;margin:0 0 5px}
+input[type=text],input[type=password],textarea,select{
+  width:100%;padding:10px 12px;border:1px solid #cbd2dc;border-radius:7px;font:inherit;background:#fff;
+}
+input:focus,textarea:focus,select:focus{outline:2px solid #ffd21e;border-color:#ffd21e}
+textarea{resize:vertical;line-height:1.5}
+.field{margin-bottom:16px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.hint{font-size:12px;color:#7a828f;margin:4px 0 0;text-transform:none;letter-spacing:0;font-weight:400}
+
+.btn{display:inline-block;border:none;background:#e23a25;color:#fff;font-weight:700;text-transform:uppercase;
+  letter-spacing:.5px;padding:11px 20px;border-radius:8px;text-decoration:none;cursor:pointer;font-size:14px}
+.btn:hover{filter:brightness(1.06)}
+.btn.secondary{background:#12233f}
+.btn.green{background:#2e9e4f}
+.btn.gray{background:#7a828f}
+.btn.danger{background:#b3261e}
+.btn.small{padding:7px 12px;font-size:12px}
+.btnrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:8px}
+
+table.teams{width:100%;border-collapse:collapse}
+table.teams th,table.teams td{text-align:left;padding:10px 8px;border-bottom:1px solid #eceef2}
+table.teams th{font-size:12px;text-transform:uppercase;color:#7a828f;letter-spacing:.5px}
+table.teams tr:hover td{background:#fafbfc}
+
+.flash{background:#e8f7ec;border:1px solid #b6e3c2;color:#1d7a3a;padding:10px 14px;border-radius:8px;margin-bottom:18px;font-weight:600}
+.flash.warn{background:#fdeaea;border-color:#f3b9b9;color:#a12a20}
+
+/* roster editor */
+.section-block{border:1px solid #e2e6ec;border-radius:9px;margin:14px 0;overflow:hidden}
+.section-block > h3{margin:0;padding:10px 14px;background:#f4f6f9;font-family:'Barlow Condensed',sans-serif;
+  text-transform:uppercase;letter-spacing:1px;font-size:16px;border-bottom:1px solid #e2e6ec}
+.player-rows{padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+.player-row{display:grid;grid-template-columns:96px 1fr auto;gap:12px;align-items:start;
+  background:#fafbfc;border:1px solid #eceef2;border-radius:8px;padding:10px}
+.player-row input[type=text]{background:#fff}
+.player-row textarea{min-height:52px;margin-top:8px}
+.p-main{display:flex;flex-direction:column}
+.p-photo{display:flex;flex-direction:column;align-items:center;gap:5px}
+.p-photo .thumb{width:82px;height:82px;border:1px solid #cbd2dc;border-radius:8px;background:#fff;
+  display:flex;align-items:center;justify-content:center;overflow:hidden}
+.p-photo .thumb img{width:100%;height:100%;object-fit:cover}
+.p-photo .thumb .noimg{font-size:10px;color:#9aa2af;text-transform:uppercase;letter-spacing:.5px}
+.p-photo .filepick{font-size:11px;font-weight:600;color:#1c62d6;text-transform:none;letter-spacing:0;
+  cursor:pointer;text-align:center;margin:0}
+.p-photo .filepick input[type=file]{display:block;width:82px;font-size:10px;margin-top:2px}
+.p-photo .rm{font-size:11px;color:#a12a20;font-weight:400;text-transform:none;letter-spacing:0;margin:0}
+.p-photo .rm input{width:auto;margin-right:3px}
+.player-row .del{background:#eceef2;color:#b3261e;border:none;border-radius:7px;padding:0 12px;height:40px;cursor:pointer;font-weight:700}
+.player-row .del:hover{background:#f7d7d4}
+.addrow{margin-top:4px}
+.login-page{min-height:100vh;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,#12233f,#0b1730)}
+.login-box{background:#fff;border-radius:14px;padding:34px 32px;width:340px;box-shadow:0 20px 50px rgba(0,0,0,.4)}
+.login-box h1{font-family:'Bangers',cursive;color:#12233f;text-align:center;margin:0 0 4px;font-size:30px;letter-spacing:1px}
+.login-box p.tag{text-align:center;color:#7a828f;margin:0 0 22px;font-size:13px;text-transform:uppercase;letter-spacing:1px}
+.login-box .btn{width:100%;text-align:center;padding:12px;font-size:15px;margin-top:6px}
+
+/* Pages editor extras */
+.page-head{margin-bottom:6px}
+.page-head .back{color:#1c62d6;font-weight:600;text-decoration:none;font-size:13px}
+.page-head .back:hover{text-decoration:underline}
+.checkline{display:flex;align-items:center;gap:8px;font-weight:600;cursor:pointer}
+.checkline input{width:auto;margin:0}
+.btn.danger{color:#b3261e;background:#f3e6e5;margin-top:14px}
+.btn.danger:hover{background:#f7d7d4}

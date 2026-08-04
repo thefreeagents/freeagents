@@ -1,0 +1,34 @@
+<%- include('partials/head', { nav: 'pages' }) %>
+
+<h1 class="admin-h1">Pages</h1>
+<p class="admin-sub">These are the pages in your top menu (Rules, Records, NCAA Draft, Free Agents…). Click one to edit its text, or add a new one below.</p>
+
+<% if (flash) { %><div class="flash"><%= flash==='deleted' ? 'Page deleted.' : 'Saved!' %></div><% } %>
+
+<div class="card">
+  <table class="teams">
+    <thead><tr><th>Page</th><th>Menu label</th><th>In menu?</th><th>Order</th><th>Updated</th><th></th></tr></thead>
+    <tbody>
+      <% pages.forEach(function(p){ %>
+        <tr>
+          <td><strong><%= p.title %></strong></td>
+          <td><%= p.nav_label || p.title %></td>
+          <td><%= p.in_nav ? 'Yes' : 'Hidden' %></td>
+          <td><%= p.nav_order %></td>
+          <td><%= p.updated_at || '—' %></td>
+          <td style="text-align:right"><a class="btn small" href="/admin/pages/<%= p.slug %>">Edit</a></td>
+        </tr>
+      <% }); %>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>Add a new page</h2>
+  <form method="post" action="/admin/pages/new">
+    <div class="field"><input type="text" name="title" placeholder="New page title (e.g. Trades)" required /></div>
+    <button class="btn green" type="submit">Add Page</button>
+  </form>
+</div>
+
+<%- include('partials/foot') %>

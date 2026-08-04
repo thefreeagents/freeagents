@@ -1,0 +1,27 @@
+<%- include('partials/header') %>
+
+<h2 class="page-heading">The Teams</h2>
+
+<div class="team-grid">
+  <% teams.forEach(function(t){ %>
+    <a class="team-card" href="/team/<%= t.slug %>">
+      <div class="team-card-art">
+        <% if (t.image) { %>
+          <img src="/uploads/<%= t.image %>" alt="<%= t.name %>" />
+        <% } else { %>
+          <div class="team-burst"><span><%= t.name %></span></div>
+        <% } %>
+      </div>
+      <div class="team-card-body">
+        <h3><%= t.name %></h3>
+        <% if (t.owner) { %><p class="owner"><%= t.owner %></p><% } %>
+        <% var champs = (t.championships||'').split(',').map(function(c){return c.trim();}).filter(Boolean); %>
+        <% if (champs.length) { %>
+          <p class="rings">🏆 <%= champs.length %>x champ (<%= champs.join(', ') %>)</p>
+        <% } %>
+      </div>
+    </a>
+  <% }); %>
+</div>
+
+<%- include('partials/footer') %>

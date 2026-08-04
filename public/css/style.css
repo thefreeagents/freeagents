@@ -1,0 +1,158 @@
+/* ============ The Free Agents — retro / comic-book styling ============ */
+:root{
+  --navy:#12233f;
+  --navy-deep:#0b1730;
+  --yellow:#ffd21e;
+  --yellow-deep:#f5b800;
+  --red:#e23a25;
+  --green:#8ac36a;
+  --green-deep:#6fae4f;
+  --ink:#141414;
+  --paper:#f4f1e8;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;
+  font-family:'Barlow',system-ui,Arial,sans-serif;
+  color:var(--ink);
+  background:var(--paper);
+  background-image:radial-gradient(rgba(0,0,0,.05) 1px,transparent 1px);
+  background-size:14px 14px;
+}
+
+/* ---------- Banner ---------- */
+.site-banner{position:relative;overflow:hidden;background:var(--navy-deep)}
+.banner-img{display:block;width:100%;height:auto;margin:0 auto;max-height:340px;object-fit:cover}
+.banner-fallback{
+  position:relative;text-align:center;padding:44px 16px 40px;
+  background:
+    radial-gradient(circle at 20% 0%,rgba(255,255,255,.18),transparent 40%),
+    radial-gradient(circle at 80% 0%,rgba(255,255,255,.18),transparent 40%),
+    linear-gradient(180deg,#1b3a6b 0%,var(--navy) 55%,var(--navy-deep) 100%);
+  background-color:var(--navy);
+}
+.banner-lights{
+  position:absolute;top:8px;left:0;right:0;height:26px;
+  background:repeating-linear-gradient(90deg,transparent 0 34px,rgba(255,255,255,.55) 34px 44px);
+  filter:blur(1px);opacity:.5;pointer-events:none;
+}
+.banner-title{
+  margin:0;font-family:'Bangers',cursive;letter-spacing:2px;
+  font-size:clamp(38px,9vw,96px);line-height:.92;
+  color:var(--yellow);
+  text-shadow:
+    -2px -2px 0 var(--red),2px -2px 0 var(--red),-2px 2px 0 var(--red),2px 2px 0 var(--red),
+    0 8px 0 rgba(0,0,0,.35);
+  -webkit-text-stroke:2px #2a1500;
+}
+.banner-sub{
+  margin:8px 0 0;font-family:'Barlow Condensed',sans-serif;font-weight:700;
+  text-transform:uppercase;letter-spacing:3px;color:#fff;font-size:clamp(12px,2.2vw,18px);
+}
+
+/* ---------- Nav ---------- */
+.mainnav{background:var(--yellow);border-top:4px solid var(--ink);border-bottom:4px solid var(--ink)}
+.mainnav ul{margin:0 auto;padding:0;max-width:1100px;display:flex;gap:6px;list-style:none;flex-wrap:wrap;justify-content:center}
+.mainnav a{
+  display:block;padding:12px 22px;font-family:'Barlow Condensed',sans-serif;font-weight:700;
+  text-transform:uppercase;letter-spacing:1px;color:var(--red);text-decoration:none;font-size:19px;
+}
+.mainnav a:hover,.mainnav a.on{background:var(--red);color:var(--yellow)}
+.mainnav .admin-link a{color:#0b5}
+
+/* ---------- Layout ---------- */
+.wrap{max-width:1100px;margin:0 auto;padding:28px 16px 60px}
+.page-heading{
+  font-family:'Bangers',cursive;letter-spacing:1.5px;color:var(--navy);
+  font-size:clamp(28px,5vw,46px);margin:6px 0 22px;text-align:center;
+}
+.back-link{display:inline-block;margin-bottom:14px;color:var(--red);font-weight:700;text-decoration:none}
+.back-link:hover{text-decoration:underline}
+
+/* ---------- Team grid (home) ---------- */
+.team-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:20px}
+.team-card{
+  display:flex;flex-direction:column;text-decoration:none;color:inherit;background:#fff;
+  border:4px solid var(--ink);border-radius:10px;overflow:hidden;
+  box-shadow:6px 6px 0 rgba(0,0,0,.18);transition:transform .1s ease,box-shadow .1s ease;
+}
+.team-card:hover{transform:translate(-2px,-2px);box-shadow:10px 10px 0 rgba(0,0,0,.22)}
+.team-card-art{height:150px;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,var(--navy),var(--navy-deep));overflow:hidden}
+.team-card-art img{width:100%;height:100%;object-fit:cover}
+.team-burst{
+  background:var(--yellow);color:var(--ink);font-family:'Bangers',cursive;letter-spacing:1px;
+  padding:14px 16px;margin:14px;text-align:center;font-size:22px;line-height:1;
+  border:3px solid var(--ink);border-radius:6px;transform:rotate(-3deg);
+  box-shadow:4px 4px 0 rgba(0,0,0,.35);
+}
+.team-card-body{padding:12px 14px 16px;border-top:4px solid var(--ink)}
+.team-card-body h3{margin:0;font-family:'Barlow Condensed',sans-serif;font-size:21px;text-transform:uppercase;line-height:1.05}
+.team-card-body .owner{margin:4px 0 0;color:#555;font-weight:600}
+.team-card-body .rings{margin:6px 0 0;font-weight:700;color:var(--yellow-deep);font-size:14px}
+
+/* ---------- Team page ---------- */
+.team-header{text-align:center;margin-bottom:26px}
+.team-hero{max-width:460px;margin:0 auto 16px;border:4px solid var(--ink);border-radius:12px;overflow:hidden;
+  background:linear-gradient(135deg,var(--navy),var(--navy-deep));box-shadow:6px 6px 0 rgba(0,0,0,.22)}
+.team-hero img{display:block;width:100%;height:auto;object-fit:cover}
+.team-name-burst{
+  display:inline-block;font-family:'Bangers',cursive;letter-spacing:2px;color:var(--yellow);
+  font-size:clamp(30px,6vw,60px);background:var(--navy);padding:10px 26px;border:4px solid var(--ink);
+  border-radius:10px;transform:rotate(-1.5deg);box-shadow:6px 6px 0 rgba(0,0,0,.25);
+  -webkit-text-stroke:1.5px #2a1500;
+}
+.team-owner{margin:16px 0 2px;font-size:18px}
+.team-tagline{margin:2px 0;color:#555;font-style:italic}
+.trophies{margin-top:12px;display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+.trophy{font-size:30px;display:flex;flex-direction:column;align-items:center;line-height:1}
+.trophy em{font-style:normal;font-weight:700;font-size:13px;color:var(--navy)}
+
+.roster-section{border:4px solid var(--ink);border-radius:10px;margin:22px 0;overflow:hidden;background:#fff;box-shadow:5px 5px 0 rgba(0,0,0,.15)}
+.section-title{
+  margin:0;padding:10px 18px;font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;
+  letter-spacing:2px;font-size:22px;color:var(--ink);border-bottom:4px solid var(--ink);
+}
+.section-yellow .section-title{background:var(--yellow)}
+.section-green .section-title{background:var(--green)}
+.section-green{background:#eef6e6}
+.player-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px;padding:16px}
+.player-card{background:#fff;border:2px solid var(--ink);border-radius:8px;padding:10px;text-align:center}
+.section-green .player-card{background:#f6fbf0}
+.player-img{width:100%;height:110px;object-fit:contain;margin-bottom:6px}
+.player-name{font-family:'Barlow Condensed',sans-serif;font-weight:700;text-transform:uppercase;font-size:17px;line-height:1.05}
+.player-contracts{margin-top:6px;display:flex;flex-direction:column;gap:2px}
+.player-contracts span{font-size:13px;font-weight:600;color:#2c5b1e}
+.section-yellow .player-contracts span{color:#8a6d00}
+.empty-note{text-align:center;color:#777;padding:30px}
+.updated{text-align:center;color:#999;font-size:12px;text-transform:uppercase;letter-spacing:1px;margin-top:24px}
+
+/* ---------- Rules ---------- */
+.rules-doc{background:#fff;border:4px solid var(--ink);border-radius:10px;padding:28px 34px;box-shadow:6px 6px 0 rgba(0,0,0,.15);max-width:820px;margin:0 auto}
+.rules-body{line-height:1.6;font-size:16px}
+.rules-body h1,.rules-body h2,.rules-body h3{font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;color:var(--navy);letter-spacing:.5px}
+.rules-body h2{border-bottom:3px solid var(--yellow);padding-bottom:4px;margin-top:28px}
+.rules-body h3{margin-top:22px;color:var(--red)}
+.rules-body ol,.rules-body ul{padding-left:22px}
+.rules-body li{margin:5px 0}
+
+/* ---------- Footer ---------- */
+.site-footer{background:var(--navy-deep);color:#cdd6e6;text-align:center;padding:22px 16px;border-top:5px solid var(--yellow)}
+.site-footer p{margin:2px 0}
+.site-footer .tiny a{color:#7f8db0;font-size:12px;text-decoration:none}
+.site-footer .tiny a:hover{color:var(--yellow)}
+
+/* ---------- 404 ---------- */
+.notfound{text-align:center;padding:60px 16px}
+.notfound h2{font-family:'Bangers',cursive;font-size:52px;color:var(--red);margin:0}
+
+/* ---------- Buttons (shared) ---------- */
+.btn{display:inline-block;background:var(--red);color:#fff;font-weight:700;text-transform:uppercase;
+  letter-spacing:1px;padding:11px 22px;border:3px solid var(--ink);border-radius:8px;text-decoration:none;
+  cursor:pointer;box-shadow:4px 4px 0 rgba(0,0,0,.25);font-family:'Barlow Condensed',sans-serif;font-size:17px}
+.btn:hover{transform:translate(-1px,-1px);box-shadow:6px 6px 0 rgba(0,0,0,.28)}
+.btn.secondary{background:var(--navy)}
+.btn.yellow{background:var(--yellow);color:var(--ink)}
+.btn.danger{background:#b3261e}
+.btn.small{padding:7px 14px;font-size:14px;box-shadow:3px 3px 0 rgba(0,0,0,.25)}

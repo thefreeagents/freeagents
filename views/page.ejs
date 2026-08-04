@@ -1,0 +1,12 @@
+<%- include('partials/header') %>
+
+<article class="rules-doc">
+  <h2 class="page-heading"><%= page.title %></h2>
+  <div class="rules-body">
+    <%- html %>
+  </div>
+  <% if (page.updated_at) { %><p class="updated">Updated <%= page.updated_at %></p><% } %>
+  <% if (isAdmin) { %><p class="updated"><a href="/admin/pages/<%= page.slug %>">Edit this page →</a></p><% } %>
+</article>
+
+<%- include('partials/footer') %>

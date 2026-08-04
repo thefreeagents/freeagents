@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin · The Free Agents</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/admin.css" />
+</head>
+<body>
+  <div class="admin-top">
+    <div class="bar">
+      <a class="brand" href="/admin">Free Agents</a>
+      <nav>
+        <a href="/admin" class="<%= (typeof nav!=='undefined'&&nav==='teams')?'on':'' %>">Teams</a>
+        <a href="/admin/pages" class="<%= (typeof nav!=='undefined'&&nav==='pages')?'on':'' %>">Pages</a>
+        <a href="/admin/settings" class="<%= (typeof nav!=='undefined'&&nav==='settings')?'on':'' %>">Settings</a>
+      </nav>
+      <div class="spacer"></div>
+      <a class="view-site" href="/" target="_blank">View site ↗</a>
+      <form method="post" action="/admin/logout"><button class="btn small gray" type="submit">Log out</button></form>
+    </div>
+  </div>
+  <div class="admin-wrap">

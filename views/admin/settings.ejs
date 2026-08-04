@@ -1,0 +1,63 @@
+<%- include('partials/head', { nav: 'settings' }) %>
+
+<h1 class="admin-h1">Settings</h1>
+<p class="admin-sub">Site title, banner, footer, and your login password.</p>
+
+<% if (flash) { %>
+  <% if (flash==='pass') { %><div class="flash">Password updated.</div>
+  <% } else if (flash==='badpass') { %><div class="flash warn">Current password was incorrect.</div>
+  <% } else if (flash==='shortpass') { %><div class="flash warn">New password must be at least 6 characters.</div>
+  <% } else { %><div class="flash">Saved!</div><% } %>
+<% } %>
+
+<form method="post" action="/admin/settings" enctype="multipart/form-data">
+  <div class="card">
+    <h2>Branding</h2>
+    <div class="field">
+      <label>Site title</label>
+      <input type="text" name="site_title" value="<%= values.site_title || '' %>" />
+    </div>
+    <div class="field">
+      <label>Subtitle</label>
+      <input type="text" name="site_subtitle" value="<%= values.site_subtitle || '' %>" />
+    </div>
+    <div class="field">
+      <label>Banner image (optional)</label>
+      <input type="file" name="banner_image" accept="image/*" />
+      <p class="hint">
+        Upload your comic-book banner to use it at the top of every page.
+        <% if (values.banner_image) { %>Current: <strong><%= values.banner_image %></strong>.<% } else { %>
+        No banner uploaded — a styled title banner is used instead.<% } %>
+      </p>
+      <% if (values.banner_image) { %>
+        <label style="margin-top:8px;font-weight:400;text-transform:none">
+          <input type="checkbox" name="remove_banner" value="1" style="width:auto"> Remove current banner
+        </label>
+      <% } %>
+    </div>
+    <div class="field">
+      <label>Footer text</label>
+      <input type="text" name="footer_text" value="<%= values.footer_text || '' %>" />
+    </div>
+    <button class="btn" type="submit">Save settings</button>
+  </div>
+</form>
+
+<form method="post" action="/admin/password">
+  <div class="card">
+    <h2>Change password</h2>
+    <div class="grid2">
+      <div class="field">
+        <label>Current password</label>
+        <input type="password" name="current" />
+      </div>
+      <div class="field">
+        <label>New password</label>
+        <input type="password" name="next" />
+      </div>
+    </div>
+    <button class="btn secondary" type="submit">Update password</button>
+  </div>
+</form>
+
+<%- include('partials/foot') %>

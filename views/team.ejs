@@ -1,0 +1,49 @@
+<%- include('partials/header') %>
+
+<a class="back-link" href="/">&larr; All Teams</a>
+
+<div class="team-header">
+  <% if (team.image) { %>
+    <div class="team-hero"><img src="/uploads/<%= team.image %>" alt="<%= team.name %>" /></div>
+  <% } %>
+  <h2 class="team-name-burst"><%= team.name %></h2>
+  <% if (team.owner) { %><p class="team-owner">Owner: <strong><%= team.owner %></strong></p><% } %>
+  <% if (team.tagline) { %><p class="team-tagline"><%= team.tagline %></p><% } %>
+  <% if (champs.length) { %>
+    <div class="trophies">
+      <% champs.forEach(function(y){ %><span class="trophy">🏆<em><%= y %></em></span><% }); %>
+    </div>
+  <% } %>
+</div>
+
+<% roster.forEach(function(s){ %>
+  <% if (s.players.length) { %>
+    <section class="roster-section section-<%= s.color %>">
+      <h3 class="section-title"><%= s.label %></h3>
+      <div class="player-grid">
+        <% s.players.forEach(function(p){ %>
+          <div class="player-card">
+            <% if (p.image) { %><img class="player-img" src="/uploads/<%= p.image %>" alt="<%= p.name %>" /><% } %>
+            <div class="player-name"><%= p.name %></div>
+            <% if (p.contracts) { %>
+              <div class="player-contracts">
+                <% p.contracts.split(/\r?\n/).filter(Boolean).forEach(function(line){ %>
+                  <span><%= line %></span>
+                <% }); %>
+              </div>
+            <% } %>
+          </div>
+        <% }); %>
+      </div>
+    </section>
+  <% } %>
+<% }); %>
+
+<% var anyPlayers = roster.some(function(s){return s.players.length;}); %>
+<% if (!anyPlayers) { %>
+  <p class="empty-note">No roster added yet. <% if (isAdmin) { %><a href="/admin/teams/<%= team.id %>">Add players &rarr;</a><% } %></p>
+<% } %>
+
+<% if (team.updated_at) { %><p class="updated">Updated <%= team.updated_at %></p><% } %>
+
+<%- include('partials/footer') %>

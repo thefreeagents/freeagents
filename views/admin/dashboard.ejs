@@ -1,0 +1,33 @@
+<%- include('partials/head', { nav: 'teams' }) %>
+
+<h1 class="admin-h1">Teams</h1>
+<p class="admin-sub">Click a team to edit its name, owner, championships, and full roster.</p>
+
+<% if (flash) { %><div class="flash"><%= flash==='deleted' ? 'Team deleted.' : 'Saved!' %></div><% } %>
+
+<div class="card">
+  <table class="teams">
+    <thead><tr><th>Team</th><th>Owner</th><th>Championships</th><th>Updated</th><th></th></tr></thead>
+    <tbody>
+      <% teams.forEach(function(t){ %>
+        <tr>
+          <td><strong><%= t.name %></strong></td>
+          <td><%= t.owner || '—' %></td>
+          <td><%= t.championships || '—' %></td>
+          <td><%= t.updated_at || '—' %></td>
+          <td style="text-align:right"><a class="btn small" href="/admin/teams/<%= t.id %>">Edit</a></td>
+        </tr>
+      <% }); %>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>Add a new team</h2>
+  <form method="post" action="/admin/teams/new">
+    <div class="field"><input type="text" name="name" placeholder="New team name" required /></div>
+    <button class="btn green" type="submit">Add Team</button>
+  </form>
+</div>
+
+<%- include('partials/foot') %>

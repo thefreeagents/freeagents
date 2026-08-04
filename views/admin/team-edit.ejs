@@ -1,0 +1,119 @@
+<%- include('partials/head', { nav: 'teams' }) %>
+
+<a href="/admin" style="text-decoration:none;color:#5b6472;font-weight:600">← All teams</a>
+<h1 class="admin-h1" style="margin-top:6px"><%= team.name %></h1>
+<p class="admin-sub">Edit team details and roster, then click <strong>Save</strong> at the bottom. Changes go live immediately.</p>
+
+<% if (flash) { %><div class="flash">Saved! <a href="/team/<%= team.slug %>" target="_blank">View on site ↗</a></div><% } %>
+
+<form method="post" action="/admin/teams/<%= team.id %>" enctype="multipart/form-data">
+  <div class="card">
+    <h2>Team details</h2>
+    <div class="grid2">
+      <div class="field">
+        <label>Team name</label>
+        <input type="text" name="name" value="<%= team.name %>" required />
+      </div>
+      <div class="field">
+        <label>Owner</label>
+        <input type="text" name="owner" value="<%= team.owner %>" />
+      </div>
+    </div>
+    <div class="field">
+      <label>Tagline / motto</label>
+      <input type="text" name="tagline" value="<%= team.tagline %>" placeholder="Optional" />
+    </div>
+    <div class="field">
+      <label>Championship years</label>
+      <input type="text" name="championships" value="<%= team.championships %>" placeholder="e.g. 2013, 2018, 2021" />
+      <p class="hint">Comma-separated years. Each becomes a trophy on the team page.</p>
+    </div>
+    <div class="field">
+      <label>Team banner image (optional)</label>
+      <input type="file" name="image" accept="image/*" />
+      <% if (team.image) { %><p class="hint">Current: <%= team.image %> — upload a new file to replace it.</p><% } %>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Roster</h2>
+    <p class="hint" style="margin:-6px 0 12px">For contracts, put each year on its own line, e.g. <code>2025: $12</code> then <code>2026: $12</code>. Leave blank if none. Empty player rows are ignored when you save.</p>
+
+    <% sections.forEach(function(s){ %>
+      <div class="section-block">
+        <h3><%= s.label %></h3>
+        <div class="player-rows" data-section="<%= s.key %>">
+          <% (roster.find(function(r){return r.key===s.key;}).players).forEach(function(p){ %>
+            <% var key = 'p' + p.id; %>
+            <div class="player-row">
+              <div class="p-photo">
+                <div class="thumb">
+                  <% if (p.image) { %><img src="/uploads/<%= p.image %>" alt="" /><% } else { %><span class="noimg">No photo</span><% } %>
+                </div>
+                <label class="filepick">Photo
+                  <input type="file" name="p_image_<%= key %>" accept="image/*" />
+                </label>
+                <% if (p.image) { %>
+                  <label class="rm"><input type="checkbox" name="p_removeimg_<%= key %>" value="1" /> remove</label>
+                <% } %>
+              </div>
+              <div class="p-main">
+                <input type="text" name="p_name" value="<%= p.name %>" placeholder="Player name" />
+                <input type="hidden" name="p_section" value="<%= s.key %>" />
+                <input type="hidden" name="p_id" value="<%= p.id %>" />
+                <input type="hidden" name="p_imgkey" value="<%= key %>" />
+                <textarea name="p_contracts" placeholder="2025: $12&#10;2026: $12"><%= p.contracts %></textarea>
+              </div>
+              <button type="button" class="del" onclick="this.closest('.player-row').remove()">✕</button>
+            </div>
+          <% }); %>
+        </div>
+        <div class="addrow" style="padding:0 14px 14px">
+          <button type="button" class="btn small green" onclick="addRow('<%= s.key %>')">+ Add player</button>
+        </div>
+      </div>
+    <% }); %>
+  </div>
+
+  <div class="btnrow">
+    <button class="btn" type="submit">Save changes</button>
+    <a class="btn secondary" href="/team/<%= team.slug %>" target="_blank">Preview page</a>
+  </div>
+</form>
+
+<div class="card" style="margin-top:26px;border-color:#f3c1bc">
+  <h2 style="color:#b3261e">Danger zone</h2>
+  <form method="post" action="/admin/teams/<%= team.id %>/delete" onsubmit="return confirm('Delete this team and its whole roster? This cannot be undone.');">
+    <button class="btn danger small" type="submit">Delete team</button>
+  </form>
+</div>
+
+<script>
+  var rowSeq = 0;
+  function addRow(section){
+    var key = 'new' + (Date.now()) + '_' + (rowSeq++);
+    var row = document.createElement('div');
+    row.className = 'player-row';
+    row.innerHTML =
+      '<div class="p-photo">' +
+        '<div class="thumb"><span class="noimg">No photo</span></div>' +
+        '<label class="filepick">Photo<input type="file" accept="image/*"></label>' +
+      '</div>' +
+      '<div class="p-main">' +
+        '<input type="text" name="p_name" placeholder="Player name">' +
+        '<input type="hidden" name="p_section">' +
+        '<input type="hidden" name="p_id" value="">' +
+        '<input type="hidden" name="p_imgkey">' +
+        '<textarea name="p_contracts" placeholder="2025: $12&#10;2026: $12"></textarea>' +
+      '</div>' +
+      '<button type="button" class="del" onclick="this.closest(\'.player-row\').remove()">\u2715</button>';
+    row.querySelector('input[name=p_section]').value = section;
+    row.querySelector('input[name=p_imgkey]').value = key;
+    row.querySelector('.filepick input[type=file]').name = 'p_image_' + key;
+    var container = document.querySelector('.player-rows[data-section="'+section+'"]');
+    container.appendChild(row);
+    row.querySelector('input[name=p_name]').focus();
+  }
+</script>
+
+<%- include('partials/foot') %>
