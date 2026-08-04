@@ -126,9 +126,18 @@ router.post('/teams/:id', requireAdmin, upload.any(), (req, res) => {
   for (const f of files) fileByField[f.fieldname] = f.filename;
 
   const bannerImage = fileByField['image'] || team.image;
+  // Owner login: email is stored as typed; password is only changed when a new
+  // one is provided (blank leaves the existing hash untouched). Clearing the
+  // email disables the owner login for this team.
+  const email = (req.body.email || '').trim();
+  const newPassword = (req.body.new_password || '').trim();
+  let passwordHash = team.password_hash || '';
+  if (!email) passwordHash = '';               // no email => login disabled
+  else if (newPassword) passwordHash = bcrypt.hashSync(newPassword, 10);
   db.prepare(`
     UPDATE teams SET name=?, owner=?, tagline=?, championships=?, image=?,
-      all_time_record=?, all_time_pf=?, all_time_seasons=?, updated_at=? WHERE id=?
+      all_time_record=?, all_time_pf=?, all_time_seasons=?, email=?, password_hash=?,
+      updated_at=? WHERE id=?
   `).run(
     (req.body.name || team.name).trim(),
     req.body.owner || '',
@@ -138,6 +147,8 @@ router.post('/teams/:id', requireAdmin, upload.any(), (req, res) => {
     (req.body.all_time_record || '').trim(),
     (req.body.all_time_pf || '').trim(),
     parseInt(req.body.all_time_seasons, 10) || 0,
+    email,
+    passwordHash,
     today(),
     team.id
   );

@@ -1,8 +1,10 @@
 // Public-facing routes: home/teams, single team, rules.
-// When Off-Season Mode is on, each team page also shows the off-season move
-// controls. For now these are open to anyone (no login) so functionality can be
-// demoed; later, member logins will restrict each page to its owner.
+// The whole site is behind a login: visitors must sign in first. The
+// commissioner logs in through the admin console (/admin/login) and can manage
+// every team; each team owner logs in here with their email + password and can
+// make off-season moves only for their own team.
 const express = require('express');
+const bcrypt = require('bcryptjs');
 const { marked } = require('marked');
 const { db, DISPLAY_SECTIONS, CONTRACT_CAP, TAXI_CAP } = require('../db/db');
 const espnSync = require('../services/espnSync');
@@ -14,6 +16,41 @@ const router = express.Router();
 function getTeams() {
   return db.prepare('SELECT * FROM teams ORDER BY sort_order, name').all();
 }
+
+// ---- Login gate -----------------------------------------------------------
+// Everyone must be signed in (as the commissioner OR a team owner) to see any
+// page. Unauthenticated requests are bounced to the login screen. The login
+// routes themselves are exempt so people can actually sign in.
+function loggedIn(req) {
+  return !!(req.session && (req.session.adminId || req.session.teamId));
+}
+router.use((req, res, next) => {
+  if (loggedIn(req)) return next();
+  if (req.path === '/login') return next(); // allow GET + POST /login
+  return res.redirect('/login');
+});
+
+// Team-owner login (email + password). The commissioner uses /admin/login.
+router.get('/login', (req, res) => {
+  if (loggedIn(req)) return res.redirect('/');
+  res.render('login', { error: null });
+});
+router.post('/login', (req, res) => {
+  const email = (req.body.email || '').trim().toLowerCase();
+  const password = req.body.password || '';
+  const team = db.prepare('SELECT * FROM teams WHERE lower(email) = ?').get(email);
+  if (team && team.password_hash && bcrypt.compareSync(password, team.password_hash)) {
+    req.session.teamId = team.id;
+    req.session.teamName = team.name;
+    return res.redirect('/team/' + team.slug);
+  }
+  res.render('login', { error: 'Incorrect email or password.' });
+});
+// Team-owner logout (leaves any admin session untouched).
+router.post('/logout', (req, res) => {
+  if (req.session) { delete req.session.teamId; delete req.session.teamName; }
+  res.redirect('/login');
+});
 
 // Home = teams overview
 router.get('/', (req, res) => {
@@ -64,6 +101,10 @@ function requireOffseason(req, res, next) {
   const team = db.prepare('SELECT id, slug FROM teams WHERE slug = ?').get(req.params.slug);
   if (!team) return res.status(404).render('404');
   if (!moves.isOn()) return res.redirect('/team/' + team.slug);
+  // Only the commissioner or this team's own logged-in owner may make moves.
+  const isAdmin = !!(req.session && req.session.adminId);
+  const isOwner = req.session && req.session.teamId === team.id;
+  if (!isAdmin && !isOwner) return res.redirect('/team/' + team.slug);
   req.team = team;
   next();
 }

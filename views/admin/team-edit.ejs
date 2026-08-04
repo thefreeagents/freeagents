@@ -48,6 +48,19 @@
       <input type="file" name="image" accept="image/*" />
       <% if (team.image) { %><p class="hint">Current: <%= team.image %> — upload a new file to replace it.</p><% } %>
     </div>
+
+    <div class="grid2">
+      <div class="field">
+        <label>Owner login email</label>
+        <input type="email" name="email" value="<%= team.email || '' %>" placeholder="owner@example.com" autocomplete="off" />
+        <p class="hint">The owner signs in with this email to make their own off-season moves.</p>
+      </div>
+      <div class="field">
+        <label>Set / reset owner password</label>
+        <input type="password" name="new_password" placeholder="<%= team.password_hash ? 'Leave blank to keep current' : 'Set a password' %>" autocomplete="new-password" />
+        <p class="hint"><%= team.password_hash ? 'A password is set. Type a new one to change it.' : 'No password set yet — the owner cannot log in until you set one.' %> Leave the email blank to disable this team's login.</p>
+      </div>
+    </div>
   </div>
 
   <div class="card">

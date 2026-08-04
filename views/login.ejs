@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= (settings && settings.site_title) || 'The Free Agents' %> — Team Login</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+  <div class="member-login">
+    <form class="member-login-box" method="post" action="/login">
+      <h1 class="member-login-title"><%= (settings && settings.site_title) || 'THE FREE AGENTS' %></h1>
+      <p class="member-login-tag">Team Owner Login</p>
+      <% if (error) { %><div class="os-flash warn"><%= error %></div><% } %>
+      <div class="field">
+        <label>Email</label>
+        <input type="email" name="email" autocomplete="username" autofocus required />
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" name="password" autocomplete="current-password" required />
+      </div>
+      <button class="btn green" type="submit">Log In</button>
+      <p class="member-login-alt">Commissioner? <a href="/admin/login">Log in here</a>.</p>
+    </form>
+  </div>
+</body>
+</html>

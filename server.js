@@ -36,6 +36,13 @@ app.use(session({
 const { db, navPages } = require('./db/db');
 app.use((req, res, next) => {
   res.locals.isAdmin = !!(req.session && req.session.adminId);
+  // A logged-in team owner (member). The commissioner (admin) is not a member
+  // but can manage every team; an owner can manage only their own team.
+  res.locals.memberTeamId = (req.session && req.session.teamId) || null;
+  res.locals.memberTeamName = (req.session && req.session.teamName) || null;
+  // canManage(team): true for the commissioner, or the team's own logged-in owner.
+  res.locals.canManage = (team) =>
+    res.locals.isAdmin || (team && res.locals.memberTeamId === team.id);
   const rows = db.prepare('SELECT key, value FROM settings').all();
   res.locals.settings = Object.fromEntries(rows.map(r => [r.key, r.value]));
   res.locals.navPages = navPages();

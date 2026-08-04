@@ -145,7 +145,12 @@ function init() {
     'ALTER TABLE teams ADD COLUMN all_time_seasons INTEGER DEFAULT 0',
     // Off-Season Mode: group all moves from one "Submit" into a single batch so
     // the whole submission can be undone together (NULL = a legacy single move).
-    'ALTER TABLE transactions ADD COLUMN batch_id INTEGER'
+    'ALTER TABLE transactions ADD COLUMN batch_id INTEGER',
+    // Team-owner logins: each team gets an email + password so its owner can log
+    // in and make their own off-season moves. The commissioner (admin) can
+    // manage every team; owners can manage only their own.
+    "ALTER TABLE teams ADD COLUMN email TEXT DEFAULT ''",
+    "ALTER TABLE teams ADD COLUMN password_hash TEXT DEFAULT ''"
   ]) {
     try { db.exec(stmt); } catch (e) { /* column already exists */ }
   }

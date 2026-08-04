@@ -28,6 +28,15 @@
         <li><a class="<%= (typeof active!=='undefined'&&active===p.slug)?'on':'' %>" href="/page/<%= p.slug %>"><%= p.label %></a></li>
       <% }); %>
       <% if (isAdmin) { %><li class="admin-link"><a href="/admin">Admin</a></li><% } %>
+      <li class="nav-login">
+        <% if (isAdmin) { %>
+          <span class="who">Commissioner</span>
+          <form method="post" action="/admin/logout"><button class="logout" type="submit">Log out</button></form>
+        <% } else if (typeof memberTeamName !== 'undefined' && memberTeamName) { %>
+          <span class="who"><%= memberTeamName %></span>
+          <form method="post" action="/logout"><button class="logout" type="submit">Log out</button></form>
+        <% } %>
+      </li>
     </ul>
   </nav>
 

@@ -299,3 +299,26 @@ img{max-width:100%}
   /* Site banner a touch shorter on phones */
   .banner-img{max-height:220px}
 }
+
+/* ============ Team-owner login page ============ */
+.member-login{min-height:80vh;display:flex;align-items:center;justify-content:center;padding:40px 16px}
+.member-login-box{width:100%;max-width:380px;background:#fff;border:4px solid var(--ink);border-radius:12px;
+  box-shadow:8px 8px 0 rgba(0,0,0,.18);padding:26px 24px}
+.member-login-title{font-family:'Bangers',cursive;letter-spacing:1.5px;color:var(--navy);
+  font-size:34px;text-align:center;margin:0}
+.member-login-tag{text-align:center;margin:2px 0 18px;font-weight:700;color:var(--red);
+  text-transform:uppercase;letter-spacing:1px;font-size:13px}
+.member-login-box .field{margin-bottom:14px}
+.member-login-box label{display:block;font-weight:700;font-size:13px;margin-bottom:4px;color:#33404f}
+.member-login-box input{width:100%;padding:10px 12px;border:2px solid var(--ink);border-radius:8px;font-size:15px}
+.member-login-box .btn{width:100%;margin-top:4px}
+.member-login-alt{text-align:center;margin:16px 0 0;font-size:13px;color:#5b6472}
+.member-login-alt a{color:var(--blue-deep);font-weight:700}
+
+/* Login state chip in the nav */
+.nav-login{margin-left:auto;display:flex;align-items:center;gap:8px}
+.nav-login .who{color:#fff;font-weight:600;font-size:13px;opacity:.9}
+.nav-login form{margin:0}
+.nav-login .logout{background:none;border:1.5px solid rgba(255,255,255,.6);color:#fff;
+  border-radius:6px;padding:3px 10px;font-weight:700;font-size:12px;cursor:pointer}
+.nav-login .logout:hover{background:rgba(255,255,255,.15)}

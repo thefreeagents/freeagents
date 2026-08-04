@@ -66,8 +66,10 @@
 <% } %>
 
 <%
-  // Off-season controls appear on the team page only while Off-Season Mode is on.
-  var offOn = (typeof offseasonOn !== 'undefined') && offseasonOn;
+  // Off-season controls appear only while Off-Season Mode is on AND the viewer
+  // is allowed to manage THIS team (the commissioner, or this team's own owner).
+  var canManageTeam = (typeof canManage === 'function') ? canManage(team) : false;
+  var offOn = (typeof offseasonOn !== 'undefined') && offseasonOn && canManageTeam;
   var actionBase = '/team/' + team.slug;
 %>
 <% if (offOn) {
@@ -300,7 +302,7 @@
 </script>
 <% } %>
 
-<% if (typeof txnGroups !== 'undefined' && txnGroups.length) { %>
+<% if (canManageTeam && typeof txnGroups !== 'undefined' && txnGroups.length) { %>
   <section class="roster-section section-blue offseason-log">
     <h3 class="section-title">Offseason Submissions</h3>
     <ul class="txn-feed">
