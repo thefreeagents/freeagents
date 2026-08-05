@@ -101,7 +101,10 @@
      // The $200 cap counts Contract Players + NCAA Contracts (per league rules).
      // This is the starting total before any pending selections are applied.
      var CAP = 200;
-     var capBase = 0;
+     // Start from any "dead money": salary still owed on Contract Players who
+     // were dropped in an earlier submission (a drop opens a roster slot but does
+     // NOT reduce salary). Then add the live Contract Players + NCAA Contracts.
+     var capBase = (typeof deadMoney !== 'undefined' && deadMoney) ? deadMoney : 0;
      contractPlayers.forEach(function(p){ capBase += priceNum(p.contracts); });
      ncaacPlayers.forEach(function(p){ capBase += priceNum(p.contracts); });
 %>
