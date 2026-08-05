@@ -26,7 +26,10 @@ function loggedIn(req) {
 }
 router.use((req, res, next) => {
   if (loggedIn(req)) return next();
-  if (req.path === '/login') return next(); // allow GET + POST /login
+  // Exempt the team login page itself, and anything under /admin (the
+  // commissioner console has its own login + auth guard) so the "Commissioner?
+  // Log in here" link can actually reach it.
+  if (req.path === '/login' || req.path === '/admin' || req.path.startsWith('/admin/')) return next();
   return res.redirect('/login');
 });
 
