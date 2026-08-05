@@ -176,6 +176,26 @@
     <% } %>
   </div>
 
+  <!-- NCAA Contracts: retain / drop -->
+  <div class="os-group">
+    <h3>NCAA Contracts</h3>
+    <% if (!ncaacPlayers.length) { %>
+      <p class="os-empty">No NCAA Contract players.</p>
+    <% } else { %>
+      <% ncaacPlayers.forEach(function(p){ %>
+        <div class="os-row">
+          <span class="os-name"><%= p.name %></span>
+          <div class="os-choices" role="radiogroup" aria-label="<%= p.name %>">
+            <label class="os-opt"><input form="osform-admin" type="radio" name="ncaac_<%= p.id %>" value="keep" checked
+                     data-player="<%= p.name %>" data-move=""> <%= costLabel('Retain', p.contracts) %></label>
+            <label class="os-opt danger"><input form="osform-admin" type="radio" name="ncaac_<%= p.id %>" value="drop"
+                     data-player="<%= p.name %>" data-move="drop from NCAA Contracts"> Drop</label>
+          </div>
+        </div>
+      <% }); %>
+    <% } %>
+  </div>
+
   <!-- Taxi Squad: keep / promote / drop -->
   <div class="os-group">
     <h3>Taxi Squad <span class="cnt"><%= counts.taxi %>/<%= caps.taxi %></span></h3>
@@ -192,26 +212,6 @@
                      data-player="<%= p.name %>" data-move="<%= costLabel('promote to NCAA Contracts', p.contracts) %>"> <%= costLabel('Promote to NCAA Contracts', p.contracts) %></label>
             <label class="os-opt danger"><input form="osform-admin" type="radio" name="taxi_<%= p.id %>" value="drop"
                      data-player="<%= p.name %>" data-move="drop from Taxi Squad"> Drop</label>
-          </div>
-        </div>
-      <% }); %>
-    <% } %>
-  </div>
-
-  <!-- NCAA Contracts: retain / drop -->
-  <div class="os-group">
-    <h3>NCAA Contracts</h3>
-    <% if (!ncaacPlayers.length) { %>
-      <p class="os-empty">No NCAA Contract players.</p>
-    <% } else { %>
-      <% ncaacPlayers.forEach(function(p){ %>
-        <div class="os-row">
-          <span class="os-name"><%= p.name %></span>
-          <div class="os-choices" role="radiogroup" aria-label="<%= p.name %>">
-            <label class="os-opt"><input form="osform-admin" type="radio" name="ncaac_<%= p.id %>" value="keep" checked
-                     data-player="<%= p.name %>" data-move=""> <%= costLabel('Retain', p.contracts) %></label>
-            <label class="os-opt danger"><input form="osform-admin" type="radio" name="ncaac_<%= p.id %>" value="drop"
-                     data-player="<%= p.name %>" data-move="drop from NCAA Contracts"> Drop</label>
           </div>
         </div>
       <% }); %>
