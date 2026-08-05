@@ -154,6 +154,28 @@ function dropContract(teamId, pid) {
   return 'dropped_contract';
 }
 
+// Dead money: a dropped Contract Player's salary keeps counting against the
+// $200 cap (they're paid the same amount as a penalty — only their roster slot
+// opens up). We reconstruct that ongoing charge from the audit log rather than a
+// separate column: every still-in-effect (undone = 0) 'drop_contract' entry
+// stores the player's original contract text, so we total each one's price for
+// the CURRENT season. This means the penalty naturally reflects a multi-year
+// contract (falling to $0 once its last season passes) and disappears the moment
+// the drop is undone (which re-creates the player and marks the row undone).
+function deadMoney(teamId) {
+  const rows = db.prepare(
+    "SELECT payload FROM transactions WHERE team_id = ? AND kind = 'drop_contract' AND undone = 0"
+  ).all(teamId);
+  let total = 0;
+  for (const r of rows) {
+    let data = {};
+    try { data = JSON.parse(r.payload || '{}'); } catch (e) { data = {}; }
+    const pr = seasonPrice(data.contracts);
+    if (pr) total += parseInt(pr.replace(/[^0-9]/g, ''), 10) || 0;
+  }
+  return total;
+}
+
 // 5) Drop an NCAA Contract player entirely.
 function dropNcaac(teamId, pid) {
   const p = teamPlayer(teamId, pid);
@@ -447,6 +469,7 @@ module.exports = {
   ncaaEligibleMove,
   dropNcaac,
   dropContract,
+  deadMoney,
   saveOffer,
   signPlayer,
   undo,

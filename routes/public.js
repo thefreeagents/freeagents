@@ -204,6 +204,7 @@ router.get('/team/:slug', (req, res) => {
     txnGroups: moves.groupTransactions(transactions), active: 'teams',
     offseasonOn, espnPlayers, offers, counts,
     caps: { contract: CONTRACT_CAP, taxi: TAXI_CAP },
+    deadMoney: moves.deadMoney(team.id),
     startYear: espnSync.currentSeason(),
     offSummary: offseason.offerSummary,
     maxYears: offseason.maxYears,

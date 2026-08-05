@@ -106,6 +106,7 @@ router.get('/teams/:id', requireAdmin, (req, res) => {
     offseasonOn, espnPlayers, offers, transactions,
     txnGroups: moves.groupTransactions(transactions),
     counts, caps: { contract: CONTRACT_CAP, taxi: TAXI_CAP },
+    deadMoney: moves.deadMoney(team.id),
     startYear: espnSync.currentSeason(),
     offSummary: offseason.offerSummary,
     maxYears: offseason.maxYears,
