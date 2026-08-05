@@ -69,7 +69,7 @@
 
   <div class="card">
     <h2>Roster</h2>
-    <p class="hint" style="margin:-6px 0 12px">For contracts, put each year on its own line, e.g. <code>2025: $12</code> then <code>2026: $12</code>. Leave blank if none. Empty player rows are ignored when you save.</p>
+    <p class="hint" style="margin:-6px 0 12px">For contracts, put each year on its own line, e.g. <code>2025: $12</code> then <code>2026: $12</code>. Leave blank if none. Empty player rows are ignored when you save. Use the <strong>▲ ▼</strong> arrows to reorder players within a section, then click <strong>Save changes</strong>.</p>
 
     <% sections.forEach(function(s){ %>
       <div class="section-block">
@@ -95,6 +95,10 @@
                 <input type="hidden" name="p_id" value="<%= p.id %>" />
                 <input type="hidden" name="p_imgkey" value="<%= key %>" />
                 <textarea name="p_contracts" placeholder="2025: $12&#10;2026: $12"><%= p.contracts %></textarea>
+              </div>
+              <div class="p-move">
+                <button type="button" class="mv" title="Move up" onclick="moveRow(this,-1)">▲</button>
+                <button type="button" class="mv" title="Move down" onclick="moveRow(this,1)">▼</button>
               </div>
               <button type="button" class="del" onclick="this.closest('.player-row').remove()">✕</button>
             </div>
@@ -207,11 +211,11 @@
           <span class="os-name"><%= p.name %>
             <% if (p.eligible) { %><span class="tag ok">eligible</span><% } %></span>
           <div class="os-choices" role="radiogroup" aria-label="<%= p.name %>">
-            <input form="osform-admin" type="radio" name="ncaa_<%= p.id %>" value="keep" checked hidden
+            <input form="osform-admin" type="radio" name="ncaa_<%= p.id %>" value="keep" <%= p.eligible ? '' : 'checked' %> hidden
                    data-player="<%= p.name %>" data-move="">
             <label class="os-opt"><input form="osform-admin" type="radio" name="ncaa_<%= p.id %>" value="activate"
                      data-player="<%= p.name %>" data-move="<%= costLabel('activate to NCAA Contracts', p.contracts) %>"> <%= costLabel('Activate', p.contracts) %></label>
-            <label class="os-opt"><input form="osform-admin" type="radio" name="ncaa_<%= p.id %>" value="taxi"
+            <label class="os-opt"><input form="osform-admin" type="radio" name="ncaa_<%= p.id %>" value="taxi" <%= p.eligible ? 'checked' : '' %>
                      data-player="<%= p.name %>" data-move="promote to Taxi Squad"> Taxi</label>
             <label class="os-opt danger"><input form="osform-admin" type="radio" name="ncaa_<%= p.id %>" value="drop"
                      data-player="<%= p.name %>" data-move="drop from NCAA Players"> Drop</label>
@@ -415,6 +419,10 @@
         '<input type="hidden" name="p_imgkey">' +
         '<textarea name="p_contracts" placeholder="2025: $12&#10;2026: $12"></textarea>' +
       '</div>' +
+      '<div class="p-move">' +
+        '<button type="button" class="mv" title="Move up" onclick="moveRow(this,-1)">\u25B2</button>' +
+        '<button type="button" class="mv" title="Move down" onclick="moveRow(this,1)">\u25BC</button>' +
+      '</div>' +
       '<button type="button" class="del" onclick="this.closest(\'.player-row\').remove()">\u2715</button>';
     row.querySelector('input[name=p_section]').value = section;
     row.querySelector('input[name=p_imgkey]').value = key;
@@ -422,6 +430,21 @@
     var container = document.querySelector('.player-rows[data-section="'+section+'"]');
     container.appendChild(row);
     row.querySelector('input[name=p_name]').focus();
+  }
+
+  // Move a player row up or down within its own section. The save handler writes
+  // each player's display order from top-to-bottom row order, so reordering here
+  // and clicking "Save changes" persists the new order for that category.
+  function moveRow(btn, dir){
+    var row = btn.closest('.player-row');
+    if (!row) return;
+    if (dir < 0){
+      var prev = row.previousElementSibling;
+      if (prev && prev.classList.contains('player-row')) row.parentNode.insertBefore(row, prev);
+    } else {
+      var next = row.nextElementSibling;
+      if (next && next.classList.contains('player-row')) row.parentNode.insertBefore(next, row);
+    }
   }
 </script>
 

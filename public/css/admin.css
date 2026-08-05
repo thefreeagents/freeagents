@@ -54,8 +54,12 @@ table.teams tr:hover td{background:#fafbfc}
 .section-block > h3{margin:0;padding:10px 14px;background:#f4f6f9;font-family:'Barlow Condensed',sans-serif;
   text-transform:uppercase;letter-spacing:1px;font-size:16px;border-bottom:1px solid #e2e6ec}
 .player-rows{padding:12px 14px;display:flex;flex-direction:column;gap:10px}
-.player-row{display:grid;grid-template-columns:96px 1fr auto;gap:12px;align-items:start;
+.player-row{display:grid;grid-template-columns:96px 1fr auto auto;gap:12px;align-items:start;
   background:#fafbfc;border:1px solid #eceef2;border-radius:8px;padding:10px}
+.p-move{display:flex;flex-direction:column;gap:4px;justify-content:center}
+.p-move .mv{background:#eceef2;color:#33507a;border:none;border-radius:7px;width:34px;height:26px;
+  cursor:pointer;font-size:12px;line-height:1;font-weight:700}
+.p-move .mv:hover{background:#d6e0f2;color:#1c3a66}
 .player-row input[type=text]{background:#fff}
 .player-row textarea{min-height:52px;margin-top:8px}
 .p-main{display:flex;flex-direction:column}
