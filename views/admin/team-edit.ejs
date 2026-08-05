@@ -118,6 +118,7 @@
 </form>
 
 <% if (offseasonOn) {
+     var contractPlayers = (roster.find(function(r){return r.key==='contract';}) || {players:[]}).players;
      var taxiPlayers = (roster.find(function(r){return r.key==='taxi';}) || {players:[]}).players;
      var ncaaPlayers = (roster.find(function(r){return r.key==='ncaa_player';}) || {players:[]}).players;
      var ncaacPlayers = (roster.find(function(r){return r.key==='ncaa_contract';}) || {players:[]}).players;
@@ -154,6 +155,26 @@
   <!-- Empty shell form: batch inputs below are linked to it with form="osform-admin"
        so the standalone "set terms" / "mark eligible" forms can sit inline without nesting. -->
   <form method="post" action="<%= mbase %>/moves/submit" id="osform-admin" class="osform"></form>
+
+  <!-- Contract Players: retain / drop (penalty = current-season price) -->
+  <div class="os-group">
+    <h3>Contract Players <span class="cnt"><%= counts.contract %>/<%= caps.contract %></span></h3>
+    <% if (!contractPlayers.length) { %>
+      <p class="os-empty">No Contract Players.</p>
+    <% } else { %>
+      <% contractPlayers.forEach(function(p){ var pr = priceFor(p.contracts); %>
+        <div class="os-row">
+          <span class="os-name"><%= p.name %></span>
+          <div class="os-choices" role="radiogroup" aria-label="<%= p.name %>">
+            <label class="os-opt"><input form="osform-admin" type="radio" name="contract_<%= p.id %>" value="keep" checked
+                     data-player="<%= p.name %>" data-move=""> <%= costLabel('Retain', p.contracts) %></label>
+            <label class="os-opt danger"><input form="osform-admin" type="radio" name="contract_<%= p.id %>" value="drop"
+                     data-player="<%= p.name %>" data-move="drop from Contract Players<%= pr ? ' (penalty ' + pr + ')' : '' %>"> Drop<%= pr ? ' (Penalty ' + pr + ')' : '' %></label>
+          </div>
+        </div>
+      <% }); %>
+    <% } %>
+  </div>
 
   <!-- Taxi Squad: keep / promote / drop -->
   <div class="os-group">

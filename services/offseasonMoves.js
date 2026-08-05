@@ -125,6 +125,35 @@ function ncaaEligibleMove(teamId, pid, action) {
   return 'choose_action';
 }
 
+// Pull the "$N" price for the current season out of a contract's text lines
+// (e.g. "2026: $12" -> "$12"). Returns '' when no line matches. Used to record
+// the drop penalty (a dropped Contract Player's penalty equals their current
+// season price) in the audit-log summary.
+function seasonPrice(contracts) {
+  if (!contracts) return '';
+  const year = String(espnSync.currentSeason());
+  let found = '';
+  String(contracts).split(/\r?\n/).forEach((line) => {
+    const mm = line.match(/(\d{4})\s*:\s*\$?\s*(\d+)/);
+    if (mm && mm[1] === year) found = '$' + mm[2];
+  });
+  return found;
+}
+
+// 6) Drop a Contract Player entirely. A penalty equal to their current-season
+// price applies in league bookkeeping; it's noted in the summary for the log.
+function dropContract(teamId, pid) {
+  const p = teamPlayer(teamId, pid);
+  if (p && p.section === 'contract') {
+    const penalty = seasonPrice(p.contracts);
+    db.prepare('DELETE FROM players WHERE id = ?').run(p.id);
+    logTxn(teamId, 'drop_contract', p.name,
+      `Dropped ${p.name} from Contract Players${penalty ? ` (penalty ${penalty})` : ''}`,
+      { name: p.name, contracts: p.contracts, image: p.image, sort_order: p.sort_order });
+  }
+  return 'dropped_contract';
+}
+
 // 5) Drop an NCAA Contract player entirely.
 function dropNcaac(teamId, pid) {
   const p = teamPlayer(teamId, pid);
@@ -191,11 +220,12 @@ function reverseTxn(teamId, txn) {
   let data = {};
   try { data = JSON.parse(txn.payload || '{}'); } catch (e) { data = {}; }
 
-  if (txn.kind === 'drop' || txn.kind === 'drop_ncaac' || txn.kind === 'drop_ncaa') {
+  if (txn.kind === 'drop' || txn.kind === 'drop_ncaac' || txn.kind === 'drop_ncaa' || txn.kind === 'drop_contract') {
     // Re-create the deleted player back in its original section. NCAA Players
     // come back eligible (that's the only state they can be dropped from).
     const section = txn.kind === 'drop' ? 'taxi'
-      : txn.kind === 'drop_ncaac' ? 'ncaa_contract' : 'ncaa_player';
+      : txn.kind === 'drop_ncaac' ? 'ncaa_contract'
+      : txn.kind === 'drop_contract' ? 'contract' : 'ncaa_player';
     const eligible = txn.kind === 'drop_ncaa' ? 1 : 0;
     db.prepare(
       'INSERT INTO players (team_id, name, section, contracts, image, sort_order, eligible) VALUES (?, ?, ?, ?, ?, ?, ?)'
@@ -254,7 +284,9 @@ function collectMoves(body) {
   for (const k of Object.keys(body || {})) {
     let m;
     const v = body[k];
-    if ((m = /^taxi_(\d+)$/.exec(k)) && v && v !== 'keep') {
+    if ((m = /^contract_(\d+)$/.exec(k)) && v && v !== 'keep') {
+      list.push({ type: 'contract', pid: parseInt(m[1], 10), action: v });
+    } else if ((m = /^taxi_(\d+)$/.exec(k)) && v && v !== 'keep') {
       list.push({ type: 'taxi', pid: parseInt(m[1], 10), action: v });
     } else if ((m = /^ncaac_(\d+)$/.exec(k)) && v && v !== 'keep') {
       list.push({ type: 'ncaac', pid: parseInt(m[1], 10), action: v });
@@ -268,6 +300,7 @@ function collectMoves(body) {
   // can, in one submit, drop a Taxi player and promote another into the freed
   // spot without tripping the cap.
   const rank = (mv) => {
+    if (mv.type === 'contract' && mv.action === 'drop') return 1; // frees a Contract slot
     if (mv.type === 'taxi') return 1;            // drop / promote-out of Taxi
     if (mv.type === 'ncaac' && mv.action === 'drop') return 1;
     if (mv.type === 'ncaa' && mv.action === 'drop') return 2;
@@ -289,6 +322,10 @@ function execMove(teamId, mv, opts) {
   if (mv.type === 'sign') {
     if (!p || p.section !== 'espn_active') return null;
     return signPlayer(teamId, { player_name: p.name, years: mv.years });
+  }
+  if (mv.type === 'contract') {
+    if (mv.action === 'drop') return dropContract(teamId, mv.pid);
+    return null;
   }
   if (mv.type === 'taxi') {
     if (mv.action === 'promote') return taxiToNcaac(teamId, mv.pid);
@@ -409,6 +446,7 @@ module.exports = {
   dropNcaaPlayer,
   ncaaEligibleMove,
   dropNcaac,
+  dropContract,
   saveOffer,
   signPlayer,
   undo,

@@ -73,6 +73,7 @@
   var actionBase = '/team/' + team.slug;
 %>
 <% if (offOn) {
+     var contractPlayers = (roster.find(function(r){return r.key==='contract';}) || {players:[]}).players;
      var taxiPlayers  = (roster.find(function(r){return r.key==='taxi';}) || {players:[]}).players;
      var ncaaPlayers  = (roster.find(function(r){return r.key==='ncaa_player';}) || {players:[]}).players;
      var ncaacPlayers = (roster.find(function(r){return r.key==='ncaa_contract';}) || {players:[]}).players;
@@ -108,6 +109,26 @@
   <% } %>
 
   <form method="post" action="<%= actionBase %>/moves/submit" id="osform" class="osform">
+
+    <!-- Contract Players: retain / drop (penalty = current-season price) -->
+    <div class="os-group">
+      <h4>Contract Players <span class="cnt"><%= counts.contract %>/<%= caps.contract %></span></h4>
+      <% if (!contractPlayers.length) { %>
+        <p class="os-empty">No Contract Players.</p>
+      <% } else { %>
+        <% contractPlayers.forEach(function(p){ var pr = priceFor(p.contracts); %>
+          <div class="os-row">
+            <span class="os-name"><%= p.name %></span>
+            <div class="os-choices" role="radiogroup" aria-label="<%= p.name %>">
+              <label class="os-opt"><input type="radio" name="contract_<%= p.id %>" value="keep" checked
+                       data-player="<%= p.name %>" data-move=""> <%= costLabel('Retain', p.contracts) %></label>
+              <label class="os-opt danger"><input type="radio" name="contract_<%= p.id %>" value="drop"
+                       data-player="<%= p.name %>" data-move="drop from Contract Players<%= pr ? ' (penalty ' + pr + ')' : '' %>"> Drop<%= pr ? ' (Penalty ' + pr + ')' : '' %></label>
+            </div>
+          </div>
+        <% }); %>
+      <% } %>
+    </div>
 
     <!-- Taxi Squad: keep / promote to NCAA Contracts / drop -->
     <div class="os-group">
