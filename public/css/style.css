@@ -322,6 +322,10 @@ img{max-width:100%}
 .member-login-box .btn{width:100%;margin-top:4px}
 .member-login-alt{text-align:center;margin:16px 0 0;font-size:13px;color:#5b6472}
 .member-login-alt a{color:var(--blue-deep);font-weight:700}
+.member-login-box .os-flash{background:#e7f6ec;border:2px solid #1f9d55;color:#12633a;
+  padding:9px 12px;border-radius:8px;font-weight:600;font-size:14px;margin:0 0 14px}
+.member-login-box .os-flash.warn{background:#fdeceb;border-color:#b3261e;color:#8a1c16}
+.member-login-note{text-align:center;margin:0 0 14px;font-size:13px;color:#5b6472;line-height:1.4}
 
 /* Login state chip in the nav */
 .nav-login{margin-left:auto;display:flex;align-items:center;gap:8px}

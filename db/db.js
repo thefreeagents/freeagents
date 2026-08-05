@@ -150,7 +150,11 @@ function init() {
     // in and make their own off-season moves. The commissioner (admin) can
     // manage every team; owners can manage only their own.
     "ALTER TABLE teams ADD COLUMN email TEXT DEFAULT ''",
-    "ALTER TABLE teams ADD COLUMN password_hash TEXT DEFAULT ''"
+    "ALTER TABLE teams ADD COLUMN password_hash TEXT DEFAULT ''",
+    // Password reset: a one-time token + its expiry (ms since epoch) used by the
+    // "Forgot password?" flow. Cleared once the password is changed.
+    "ALTER TABLE teams ADD COLUMN reset_token TEXT DEFAULT ''",
+    'ALTER TABLE teams ADD COLUMN reset_expires INTEGER DEFAULT 0'
   ]) {
     try { db.exec(stmt); } catch (e) { /* column already exists */ }
   }

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= (settings && settings.site_title) || 'The Free Agents' %> — Set New Password</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+  <div class="member-login">
+    <% if (token) { %>
+      <form class="member-login-box" method="post" action="/reset/<%= token %>">
+        <h1 class="member-login-title"><%= (settings && settings.site_title) || 'THE FREE AGENTS' %></h1>
+        <p class="member-login-tag">Set New Password</p>
+        <% if (error) { %><div class="os-flash warn"><%= error %></div><% } %>
+        <div class="field">
+          <label>New password</label>
+          <input type="password" name="password" autocomplete="new-password" minlength="6" autofocus required />
+        </div>
+        <div class="field">
+          <label>Confirm new password</label>
+          <input type="password" name="confirm" autocomplete="new-password" minlength="6" required />
+        </div>
+        <button class="btn green" type="submit">Save new password</button>
+        <p class="member-login-alt"><a href="/login">Back to log in</a></p>
+      </form>
+    <% } else { %>
+      <div class="member-login-box">
+        <h1 class="member-login-title"><%= (settings && settings.site_title) || 'THE FREE AGENTS' %></h1>
+        <p class="member-login-tag">Reset Password</p>
+        <div class="os-flash warn"><%= error %></div>
+        <p class="member-login-alt"><a href="/forgot">Request a new link</a></p>
+      </div>
+    <% } %>
+  </div>
+</body>
+</html>

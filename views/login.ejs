@@ -13,6 +13,7 @@
     <form class="member-login-box" method="post" action="/login">
       <h1 class="member-login-title"><%= (settings && settings.site_title) || 'THE FREE AGENTS' %></h1>
       <p class="member-login-tag">Team Owner Login</p>
+      <% if (typeof notice !== 'undefined' && notice) { %><div class="os-flash ok"><%= notice %></div><% } %>
       <% if (error) { %><div class="os-flash warn"><%= error %></div><% } %>
       <div class="field">
         <label>Email</label>
@@ -23,6 +24,7 @@
         <input type="password" name="password" autocomplete="current-password" required />
       </div>
       <button class="btn green" type="submit">Log In</button>
+      <p class="member-login-alt"><a href="/forgot">Forgot your password?</a></p>
       <p class="member-login-alt">Commissioner? <a href="/admin/login">Log in here</a>.</p>
     </form>
   </div>

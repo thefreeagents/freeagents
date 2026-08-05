@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= (settings && settings.site_title) || 'The Free Agents' %> — Reset Password</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+  <div class="member-login">
+    <form class="member-login-box" method="post" action="/forgot">
+      <h1 class="member-login-title"><%= (settings && settings.site_title) || 'THE FREE AGENTS' %></h1>
+      <p class="member-login-tag">Reset Password</p>
+      <% if (sent) { %>
+        <div class="os-flash ok">If that email is on file, a reset link is on its way. Check your inbox (and spam folder).</div>
+        <p class="member-login-alt"><a href="/login">Back to log in</a></p>
+      <% } else { %>
+        <p class="member-login-note">Enter the email you use to log in and we'll send you a link to set a new password.</p>
+        <div class="field">
+          <label>Email</label>
+          <input type="email" name="email" autocomplete="username" autofocus required />
+        </div>
+        <button class="btn green" type="submit">Send reset link</button>
+        <p class="member-login-alt"><a href="/login">Back to log in</a></p>
+      <% } %>
+    </form>
+  </div>
+</body>
+</html>

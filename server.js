@@ -11,6 +11,10 @@ init(); // make sure tables exist
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Render (and most hosts) sit behind a proxy that terminates HTTPS. Trusting it
+// lets req.protocol report "https", so password-reset links are built as https.
+app.set('trust proxy', 1);
+
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 

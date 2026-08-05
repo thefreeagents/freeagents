@@ -4,17 +4,26 @@
 // every team; each team owner logs in here with their email + password and can
 // make off-season moves only for their own team.
 const express = require('express');
+const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const { marked } = require('marked');
 const { db, DISPLAY_SECTIONS, CONTRACT_CAP, TAXI_CAP } = require('../db/db');
 const espnSync = require('../services/espnSync');
 const offseason = require('../services/offseason');
 const moves = require('../services/offseasonMoves');
+const mail = require('../services/mail');
 
 const router = express.Router();
 
 function getTeams() {
   return db.prepare('SELECT * FROM teams ORDER BY sort_order, name').all();
+}
+
+// Absolute base URL for links in emails. Prefer an explicit BASE_URL env var
+// (e.g. https://thefreeagents.org); otherwise derive it from the request.
+function baseUrl(req) {
+  const url = process.env.BASE_URL || (req.protocol + '://' + req.get('host'));
+  return url.replace(/\/$/, '');
 }
 
 // ---- Login gate -----------------------------------------------------------
@@ -26,17 +35,24 @@ function loggedIn(req) {
 }
 router.use((req, res, next) => {
   if (loggedIn(req)) return next();
-  // Exempt the team login page itself, and anything under /admin (the
-  // commissioner console has its own login + auth guard) so the "Commissioner?
-  // Log in here" link can actually reach it.
-  if (req.path === '/login' || req.path === '/admin' || req.path.startsWith('/admin/')) return next();
+  // Exempt the team login page, the password-reset pages, and anything under
+  // /admin (the commissioner console has its own login + auth guard) so the
+  // "Commissioner? Log in here" link can actually reach it.
+  if (
+    req.path === '/login' ||
+    req.path === '/forgot' ||
+    req.path.startsWith('/reset/') ||
+    req.path === '/admin' ||
+    req.path.startsWith('/admin/')
+  ) return next();
   return res.redirect('/login');
 });
 
 // Team-owner login (email + password). The commissioner uses /admin/login.
 router.get('/login', (req, res) => {
   if (loggedIn(req)) return res.redirect('/');
-  res.render('login', { error: null });
+  const notice = req.query.reset ? 'Your password has been reset — you can log in now.' : null;
+  res.render('login', { error: null, notice });
 });
 router.post('/login', (req, res) => {
   const email = (req.body.email || '').trim().toLowerCase();
@@ -47,7 +63,53 @@ router.post('/login', (req, res) => {
     req.session.teamName = team.name;
     return res.redirect('/team/' + team.slug);
   }
-  res.render('login', { error: 'Incorrect email or password.' });
+  res.render('login', { error: 'Incorrect email or password.', notice: null });
+});
+
+// ---- Forgot / reset password ----------------------------------------------
+// A team owner who forgets their password requests a reset link by email. The
+// link carries a random, single-use token that expires after one hour.
+router.get('/forgot', (req, res) => {
+  if (loggedIn(req)) return res.redirect('/');
+  res.render('forgot', { sent: false });
+});
+router.post('/forgot', (req, res) => {
+  const email = (req.body.email || '').trim().toLowerCase();
+  const team = email ? db.prepare('SELECT * FROM teams WHERE lower(email) = ?').get(email) : null;
+  if (team && team.email) {
+    const token = crypto.randomBytes(32).toString('hex');
+    const expires = Date.now() + 1000 * 60 * 60; // 1 hour
+    db.prepare('UPDATE teams SET reset_token = ?, reset_expires = ? WHERE id = ?').run(token, expires, team.id);
+    const link = baseUrl(req) + '/reset/' + token;
+    const text =
+      `Hi ${team.owner || team.name},\n\n` +
+      `Someone asked to reset the password for your team login on The Free Agents (${team.name}).\n\n` +
+      `Choose a new password using the link below. It expires in one hour:\n\n${link}\n\n` +
+      `If you didn't request this, you can ignore this email — your password won't change.`;
+    mail.send({ to: team.email, subject: 'Reset your The Free Agents password', text }).catch(() => {});
+  }
+  // Always show the same confirmation, so we never reveal which emails exist.
+  res.render('forgot', { sent: true });
+});
+function findByToken(token) {
+  if (!token) return null;
+  return db.prepare('SELECT * FROM teams WHERE reset_token = ? AND reset_expires > ?').get(token, Date.now());
+}
+router.get('/reset/:token', (req, res) => {
+  const team = findByToken(req.params.token);
+  if (!team) return res.render('reset', { token: null, error: 'This reset link is invalid or has expired. Please request a new one.' });
+  res.render('reset', { token: req.params.token, error: null });
+});
+router.post('/reset/:token', (req, res) => {
+  const team = findByToken(req.params.token);
+  if (!team) return res.render('reset', { token: null, error: 'This reset link is invalid or has expired. Please request a new one.' });
+  const pw = req.body.password || '';
+  const pw2 = req.body.confirm || '';
+  if (pw.length < 6) return res.render('reset', { token: req.params.token, error: 'Password must be at least 6 characters.' });
+  if (pw !== pw2) return res.render('reset', { token: req.params.token, error: 'The two passwords do not match.' });
+  const hash = bcrypt.hashSync(pw, 10);
+  db.prepare('UPDATE teams SET password_hash = ?, reset_token = NULL, reset_expires = 0 WHERE id = ?').run(hash, team.id);
+  res.redirect('/login?reset=1');
 });
 // Team-owner logout (leaves any admin session untouched).
 router.post('/logout', (req, res) => {
@@ -132,9 +194,34 @@ function osQuery(r) {
   return '?osmsg=' + encodeURIComponent(msg) + (warn ? '&oswarn=1' : '');
 }
 
+// Email the commissioner a summary when a team owner submits off-season moves.
+// Fire-and-forget: a mail hiccup must never affect the submission itself.
+function notifyCommissioner(req, team, batchId) {
+  try {
+    const rows = db.prepare(
+      'SELECT summary FROM transactions WHERE team_id = ? AND batch_id = ? AND undone = 0 ORDER BY id'
+    ).all(team.id, batchId);
+    if (!rows.length) return;
+    const lines = rows.map(r => '\u2022 ' + r.summary);
+    const subject = `[The Free Agents] ${team.name} submitted off-season moves`;
+    const text =
+      `${team.name} just submitted the following off-season ` +
+      `move${lines.length === 1 ? '' : 's'}:\n\n` +
+      lines.join('\n') +
+      `\n\nView the team: ${baseUrl(req)}/team/${team.slug}`;
+    mail.send({ to: mail.NOTIFY_TO, subject, text }).catch(() => {});
+  } catch (e) {
+    console.error('[notify] could not build submission email:', e.message);
+  }
+}
+
 // One "Submit" applies every chosen move at once (caps enforced together).
 router.post('/team/:slug/moves/submit', requireOffseason, (req, res) => {
-  backToTeamMsg(res, req.team.slug, moves.submitMoves(req.team.id, req.body, { isAdmin: false }));
+  const result = moves.submitMoves(req.team.id, req.body, { isAdmin: false });
+  if (result.ok && !result.empty && result.batchId) {
+    notifyCommissioner(req, req.team, result.batchId);
+  }
+  backToTeamMsg(res, req.team.slug, result);
 });
 // One "Undo" reverses an entire submitted batch back to the prior state.
 router.post('/team/:slug/moves/undo-batch/:batchId', requireOffseason, (req, res) => {
