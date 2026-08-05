@@ -57,7 +57,11 @@
       </div>
       <div class="field">
         <label>Set / reset owner password</label>
-        <input type="password" name="new_password" placeholder="<%= team.password_hash ? 'Leave blank to keep current' : 'Set a password' %>" autocomplete="new-password" />
+        <input type="text" id="owner_password" name="new_password" placeholder="<%= team.password_hash ? 'Leave blank to keep current' : 'Set a password' %>" autocomplete="new-password" />
+        <label class="checkline" style="margin-top:6px;font-weight:normal">
+          <input type="checkbox" onchange="document.getElementById('owner_password').type = this.checked ? 'password' : 'text'" />
+          Hide password
+        </label>
         <p class="hint"><%= team.password_hash ? 'A password is set. Type a new one to change it.' : 'No password set yet — the owner cannot log in until you set one.' %> Leave the email blank to disable this team's login.</p>
       </div>
     </div>
