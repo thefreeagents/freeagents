@@ -57,7 +57,15 @@ router.post('/logout', (req, res) => {
 
 // Home = teams overview
 router.get('/', (req, res) => {
-  res.render('index', { teams: getTeams(), active: 'teams' });
+  const teams = getTeams();
+  // When a team owner is signed in, float their own team to the top of the
+  // list so they see it first. The commissioner (admin) has no own team, so
+  // the order is left untouched for them.
+  const mine = req.session && req.session.teamId;
+  if (mine) {
+    teams.sort((a, b) => (b.id === mine ? 1 : 0) - (a.id === mine ? 1 : 0));
+  }
+  res.render('index', { teams, active: 'teams' });
 });
 
 // Single team page with full roster (+ off-season controls when the mode is on)
