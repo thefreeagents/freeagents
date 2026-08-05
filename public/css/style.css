@@ -120,9 +120,9 @@ body{
 .team-owner{margin:16px 0 2px;font-size:18px}
 .team-tagline{margin:2px 0;color:#555;font-style:italic}
 .trophies{margin-top:12px;display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
-.trophy{display:flex;flex-direction:column;align-items:center;line-height:1;gap:3px}
+.trophy{display:flex;flex-direction:column;align-items:center;line-height:1;gap:4px;font-size:46px;filter:drop-shadow(1px 2px 1px rgba(0,0,0,.25))}
 .trophy-img{height:34px;width:auto;display:block;filter:drop-shadow(1px 2px 1px rgba(0,0,0,.25))}
-.trophy em{font-style:normal;font-weight:700;font-size:13px;color:var(--navy)}
+.trophy em{font-style:normal;font-weight:700;font-size:14px;color:var(--navy)}
 .rings-trophy{height:16px;width:auto;vertical-align:-3px;margin-right:5px}
 
 .roster-section{border:4px solid var(--ink);border-radius:10px;margin:22px 0;overflow:hidden;background:#fff;box-shadow:5px 5px 0 rgba(0,0,0,.15)}

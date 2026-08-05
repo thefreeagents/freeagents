@@ -375,7 +375,9 @@ function groupTransactions(rows) {
     }
   }
   for (const g of groups) g.items.reverse(); // show moves in the order they happened
-  return groups;
+  // Once a submission is undone it disappears from the log entirely — we only
+  // list submissions that are still in effect (and therefore still undoable).
+  return groups.filter(g => !g.allUndone);
 }
 
 // Undo an entire submitted batch: reverse every move in it (newest first) and
