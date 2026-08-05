@@ -140,3 +140,7 @@ table.teams tr:hover td{background:#fafbfc}
 .txn-summary{font-weight:600}
 .txn-date{font-size:12px;color:#8a919c}
 .txn-side form{margin:0}
+
+/* "must decide" warning above the submit bar */
+.os-need{background:#fdeceb;border:1px solid #f3b9b9;color:#a12a20;
+  padding:9px 13px;border-radius:8px;margin:0 0 12px;font-weight:600;font-size:13px}

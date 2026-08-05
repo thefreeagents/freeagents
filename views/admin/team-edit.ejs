@@ -144,7 +144,8 @@
   <h2>Off-Season Moves</h2>
   <p class="hint" style="margin-top:-6px">Choose what to do with each player, then press <strong>Submit</strong> at the
     bottom to apply every move at once. Nothing changes until you submit, and if any move would break a cap the
-    whole submission is cancelled. Caps: max <%= caps.contract %> Contract Players, max <%= caps.taxi %> Taxi Squad players.</p>
+    whole submission is cancelled. Caps: max <%= caps.contract %> Contract Players, max <%= caps.taxi %> Taxi Squad players.
+    <strong>All changes can be undone until the pre-season locks.</strong></p>
 
   <% if (typeof osmsg !== 'undefined' && osmsg) { %>
     <div class="flash <%= oswarn ? 'warn' : '' %>"><%= osmsg %></div>
@@ -212,7 +213,7 @@
             <% if (p.eligible) { %><span class="tag ok">eligible</span><% } %></span>
           <div class="os-choices" role="radiogroup" aria-label="<%= p.name %>">
             <input form="osform-admin" type="radio" name="ncaa_<%= p.id %>" value="keep" <%= p.eligible ? '' : 'checked' %> hidden
-                   data-player="<%= p.name %>" data-move="">
+                   data-player="<%= p.name %>" data-move="" data-elig="<%= p.eligible ? '1' : '0' %>">
             <label class="os-opt"><input form="osform-admin" type="radio" name="ncaa_<%= p.id %>" value="activate"
                      data-player="<%= p.name %>" data-move="<%= costLabel('activate to NCAA Contracts', p.contracts) %>"> <%= costLabel('Activate', p.contracts) %></label>
             <label class="os-opt"><input form="osform-admin" type="radio" name="ncaa_<%= p.id %>" value="taxi" <%= p.eligible ? 'checked' : '' %>
@@ -283,6 +284,7 @@
     <ul id="os-pending-list"></ul>
   </div>
   <p class="os-pending-empty" id="os-pending-empty">No moves selected yet.</p>
+  <p class="os-need" id="os-need-admin" hidden></p>
 
   <div class="os-submitbar">
     <button class="btn green" form="osform-admin" type="submit" id="os-submit" disabled>Submit moves</button>
@@ -308,6 +310,25 @@
     var emptyEl = document.getElementById('os-pending-empty');
     var countEl = document.getElementById('os-pending-count');
     var submit  = document.getElementById('os-submit');
+    var needEl  = document.getElementById('os-need-admin');
+
+    // Eligible NCAA players must be given a real choice (Activate / Taxi / Drop)
+    // before submit — an eligible player left on "keep" blocks the whole batch.
+    function undecidedEligible(){
+      var keeps = [];
+      Array.prototype.forEach.call(form.elements, function(el){
+        if (el.type === 'radio' && el.value === 'keep' && el.dataset && el.dataset.elig === '1') keeps.push(el);
+      });
+      var names = [];
+      keeps.forEach(function(keep){
+        var checked = null;
+        Array.prototype.forEach.call(form.elements, function(el){
+          if (el.type === 'radio' && el.name === keep.name && el.checked) checked = el;
+        });
+        if (!checked || checked.value === 'keep') names.push(keep.dataset.player || keep.name);
+      });
+      return names;
+    }
 
     function selected(){
       var out = [];
@@ -345,7 +366,16 @@
       countEl.textContent = items.length;
       wrapEl.hidden = items.length === 0;
       emptyEl.hidden = items.length !== 0;
-      submit.disabled = items.length === 0;
+      var undecided = undecidedEligible();
+      if (needEl) {
+        if (undecided.length) {
+          needEl.textContent = 'Choose Activate, Taxi, or Drop for every eligible NCAA player before submitting: ' + undecided.join(', ') + '.';
+          needEl.hidden = false;
+        } else {
+          needEl.hidden = true;
+        }
+      }
+      submit.disabled = (items.length === 0) || (undecided.length > 0);
     }
     form.addEventListener('change', render);
     document.addEventListener('change', function(e){
@@ -354,7 +384,7 @@
     document.getElementById('os-reset').addEventListener('click', function(){ form.reset(); render(); });
     form.addEventListener('submit', function(e){
       var items = selected();
-      if (!items.length) { e.preventDefault(); return; }
+      if (!items.length || undecidedEligible().length) { e.preventDefault(); return; }
       if (!confirm('Submit ' + items.length + ' move' + (items.length===1?'':'s') + ' now?')) e.preventDefault();
     });
     render();

@@ -100,7 +100,8 @@
   <h3 class="os-heading">Off-Season Moves</h3>
   <p class="os-note">Choose what to do with each player, then press <strong>Submit</strong> at the bottom
     to make all the moves at once. Nothing changes until you submit. Caps:
-    max <%= caps.contract %> Contract Players, max <%= caps.taxi %> Taxi Squad players.</p>
+    max <%= caps.contract %> Contract Players, max <%= caps.taxi %> Taxi Squad players.
+    <strong>All changes can be undone until the pre-season locks.</strong></p>
 
   <% if (typeof osmsg !== 'undefined' && osmsg) { %>
     <div class="os-flash <%= oswarn ? 'warn' : '' %>"><%= osmsg %></div>
@@ -167,7 +168,7 @@
             <span class="os-name"><%= p.name %> <span class="tag ok">eligible</span></span>
             <div class="os-choices" role="radiogroup" aria-label="<%= p.name %>">
               <input type="radio" name="ncaa_<%= p.id %>" value="keep" hidden
-                     data-player="<%= p.name %>" data-move="">
+                     data-player="<%= p.name %>" data-move="" data-elig="1">
               <label class="os-opt"><input type="radio" name="ncaa_<%= p.id %>" value="activate"
                        data-player="<%= p.name %>" data-move="<%= costLabel('activate to NCAA Contracts', p.contracts) %>"> <%= costLabel('Activate', p.contracts) %></label>
               <label class="os-opt"><input type="radio" name="ncaa_<%= p.id %>" value="taxi" checked
@@ -223,6 +224,7 @@
       <ul id="os-pending-list"></ul>
     </div>
     <p class="os-pending-empty" id="os-pending-empty">No moves selected yet.</p>
+    <p class="os-need" id="os-need" hidden></p>
 
     <div class="os-submitbar">
       <button class="btn green" type="submit" id="os-submit" disabled>Submit moves</button>
@@ -240,6 +242,18 @@
   var emptyEl = document.getElementById('os-pending-empty');
   var countEl = document.getElementById('os-pending-count');
   var submit  = document.getElementById('os-submit');
+  var needEl  = document.getElementById('os-need');
+
+  // Eligible NCAA players must be given a real choice (Activate / Taxi / Drop)
+  // before the form can be submitted — an eligible player left on "keep" blocks it.
+  function undecidedEligible(){
+    var names = [];
+    form.querySelectorAll('input[type=radio][value="keep"][data-elig="1"]').forEach(function(keep){
+      var checked = form.querySelector('input[name="' + keep.name + '"]:checked');
+      if (!checked || checked.value === 'keep') names.push(keep.dataset.player || keep.name);
+    });
+    return names;
+  }
 
   function selected(){
     var out = [];
@@ -284,7 +298,14 @@
     countEl.textContent = items.length;
     wrapEl.hidden = items.length === 0;
     emptyEl.hidden = items.length !== 0;
-    submit.disabled = items.length === 0;
+    var undecided = undecidedEligible();
+    if (needEl){
+      needEl.hidden = undecided.length === 0;
+      if (undecided.length){
+        needEl.textContent = 'Choose Activate, Taxi, or Drop for every eligible NCAA player before submitting: ' + undecided.join(', ') + '.';
+      }
+    }
+    submit.disabled = (items.length === 0) || (undecided.length > 0);
   }
 
   form.addEventListener('change', render);
@@ -294,7 +315,7 @@
   });
   form.addEventListener('submit', function(e){
     var items = selected();
-    if (!items.length) { e.preventDefault(); return; }
+    if (!items.length || undecidedEligible().length) { e.preventDefault(); return; }
     if (!confirm('Submit ' + items.length + ' move' + (items.length===1?'':'s') + ' now?')) e.preventDefault();
   });
   render();
