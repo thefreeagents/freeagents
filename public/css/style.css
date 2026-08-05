@@ -163,6 +163,12 @@ body{
 .rules-body h3{margin-top:22px;color:var(--red)}
 .rules-body ol,.rules-body ul{padding-left:22px}
 .rules-body li{margin:5px 0}
+.rules-body table{border-collapse:collapse;margin:18px 0;width:auto;font-size:15px;box-shadow:3px 3px 0 rgba(0,0,0,.12)}
+.rules-body th,.rules-body td{border:2px solid var(--ink);padding:7px 16px;text-align:center}
+.rules-body thead th{background:var(--navy);color:#fff;font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.5px;font-size:16px}
+.rules-body tbody tr:nth-child(even){background:#f4f6fb}
+.rules-body tbody td:first-child{font-weight:700;background:var(--yellow);color:var(--ink)}
+@media (max-width:600px){.rules-body table{width:100%;font-size:13px}.rules-body th,.rules-body td{padding:6px 8px}}
 
 /* ---------- Footer ---------- */
 .site-footer{background:var(--navy-deep);color:#cdd6e6;text-align:center;padding:22px 16px;border-top:5px solid var(--yellow)}
