@@ -96,6 +96,14 @@
        var pr = priceFor(contracts);
        return pr ? (base + ' (' + pr + ')') : base;
      }
+     // Current-season salary as a plain number (0 if none), for the cap meter.
+     function priceNum(contracts){ var s = priceFor(contracts); return s ? parseInt(s.replace(/[^0-9]/g,''),10) : 0; }
+     // The $200 cap counts Contract Players + NCAA Contracts (per league rules).
+     // This is the starting total before any pending selections are applied.
+     var CAP = 200;
+     var capBase = 0;
+     contractPlayers.forEach(function(p){ capBase += priceNum(p.contracts); });
+     ncaacPlayers.forEach(function(p){ capBase += priceNum(p.contracts); });
 %>
 <section class="offseason-panel" id="offseason">
   <h3 class="os-heading">Off-Season Moves</h3>
@@ -107,6 +115,15 @@
   <% if (typeof osmsg !== 'undefined' && osmsg) { %>
     <div class="os-flash <%= oswarn ? 'warn' : '' %>"><%= osmsg %></div>
   <% } %>
+
+  <div class="os-capmeter" id="os-capmeter" data-base="<%= capBase %>" data-cap="<%= CAP %>">
+    <div class="os-capmeter-head">
+      <span class="os-cap-label">Salary used</span>
+      <span class="os-cap-figure"><strong id="os-cap-used">$<%= capBase %></strong> <span class="os-cap-of">/ $<%= CAP %></span></span>
+    </div>
+    <div class="os-capbar"><div class="os-capbar-fill" id="os-cap-fill"></div></div>
+    <p class="os-cap-note" id="os-cap-note"></p>
+  </div>
 
   <form method="post" action="<%= actionBase %>/moves/submit" id="osform" class="osform">
 
@@ -143,7 +160,8 @@
               <label class="os-opt"><input type="radio" name="ncaac_<%= p.id %>" value="keep" checked
                        data-player="<%= p.name %>" data-move=""> <%= costLabel('Retain', p.contracts) %></label>
               <label class="os-opt danger"><input type="radio" name="ncaac_<%= p.id %>" value="drop"
-                       data-player="<%= p.name %>" data-move="drop from NCAA Contracts"> Drop</label>
+                       data-player="<%= p.name %>" data-move="drop from NCAA Contracts"
+                       data-cap-delta="<%= -priceNum(p.contracts) %>"> Drop</label>
             </div>
           </div>
         <% }); %>
@@ -163,7 +181,8 @@
               <label class="os-opt"><input type="radio" name="taxi_<%= p.id %>" value="keep" checked
                        data-player="<%= p.name %>" data-move=""> Taxi</label>
               <label class="os-opt"><input type="radio" name="taxi_<%= p.id %>" value="promote"
-                       data-player="<%= p.name %>" data-move="<%= costLabel('promote to NCAA Contracts', p.contracts) %>"> <%= costLabel('Promote to NCAA Contracts', p.contracts) %></label>
+                       data-player="<%= p.name %>" data-move="<%= costLabel('promote to NCAA Contracts', p.contracts) %>"
+                       data-cap-delta="<%= priceNum(p.contracts) %>"> <%= costLabel('Promote to NCAA Contracts', p.contracts) %></label>
               <label class="os-opt danger"><input type="radio" name="taxi_<%= p.id %>" value="drop"
                        data-player="<%= p.name %>" data-move="drop from Taxi Squad"> Drop</label>
             </div>
@@ -191,7 +210,8 @@
               <input type="radio" name="ncaa_<%= p.id %>" value="keep" hidden
                      data-player="<%= p.name %>" data-move="" data-elig="1">
               <label class="os-opt"><input type="radio" name="ncaa_<%= p.id %>" value="activate"
-                       data-player="<%= p.name %>" data-move="<%= costLabel('activate to NCAA Contracts', p.contracts) %>"> <%= costLabel('Activate', p.contracts) %></label>
+                       data-player="<%= p.name %>" data-move="<%= costLabel('activate to NCAA Contracts', p.contracts) %>"
+                       data-cap-delta="<%= priceNum(p.contracts) %>"> <%= costLabel('Activate', p.contracts) %></label>
               <label class="os-opt"><input type="radio" name="ncaa_<%= p.id %>" value="taxi" checked
                        data-player="<%= p.name %>" data-move="promote to Taxi Squad"> Taxi</label>
               <label class="os-opt danger"><input type="radio" name="ncaa_<%= p.id %>" value="drop"
@@ -214,11 +234,14 @@
              var offer = offers[p.name];
              var acq = offer ? offer.acq_type : 'auction';
              var yrs = maxYears(acq);
+             // First-year salary added to the cap if signed: waiver = $11, auction = the price.
+             var firstYear = offer ? (offer.acq_type === 'waiver' ? 11 : (parseInt(offer.auction_price, 10) || 0)) : 0;
         %>
           <div class="os-row os-sign-row">
             <label class="os-sign-check">
               <input type="checkbox" name="sign_<%= p.id %>" value="1" <%= offer ? '' : 'disabled' %>
-                     data-player="<%= p.name %>" data-move="sign to Contract Players">
+                     data-player="<%= p.name %>" data-move="sign to Contract Players"
+                     data-cap-delta="<%= firstYear %>">
               <span class="os-name"><%= p.name %></span>
             </label>
             <div class="os-sign-terms">
@@ -264,6 +287,27 @@
   var countEl = document.getElementById('os-pending-count');
   var submit  = document.getElementById('os-submit');
   var needEl  = document.getElementById('os-need');
+
+  // Live salary meter: base total + the delta of every checked selection.
+  function updateCap(){
+    var meter = document.getElementById('os-capmeter');
+    if (!meter) return;
+    var base = parseInt(meter.dataset.base, 10) || 0;
+    var cap  = parseInt(meter.dataset.cap, 10) || 200;
+    var total = base;
+    form.querySelectorAll('input:checked').forEach(function(el){
+      if (el.dataset && el.dataset.capDelta) total += parseInt(el.dataset.capDelta, 10) || 0;
+    });
+    document.getElementById('os-cap-used').textContent = '$' + total;
+    document.getElementById('os-cap-fill').style.width = Math.max(0, Math.min(100, Math.round(total / cap * 100))) + '%';
+    meter.classList.toggle('over', total > cap);
+    var note = document.getElementById('os-cap-note');
+    if (note){
+      note.textContent = total > cap
+        ? '$' + (total - cap) + ' over the $' + cap + ' cap (allowed only to sign NCAA/Collegiate players).'
+        : '$' + (cap - total) + ' of cap space remaining.';
+    }
+  }
 
   // Eligible NCAA players must be given a real choice (Activate / Taxi / Drop)
   // before the form can be submitted — an eligible player left on "keep" blocks it.
@@ -327,6 +371,7 @@
       }
     }
     submit.disabled = (items.length === 0) || (undecided.length > 0);
+    updateCap();
   }
 
   form.addEventListener('change', render);

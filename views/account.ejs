@@ -1,0 +1,45 @@
+<%- include('partials/header') %>
+
+<a class="back-link" href="/team/<%= team.slug %>">&larr; Back to my team</a>
+
+<div class="account-wrap">
+  <h2 class="account-h1">My Account</h2>
+  <p class="account-sub"><%= team.name %></p>
+
+  <% if (typeof msg !== 'undefined' && msg) { %><div class="os-flash ok"><%= msg %></div><% } %>
+  <% if (typeof err !== 'undefined' && err) { %><div class="os-flash warn"><%= err %></div><% } %>
+
+  <section class="account-card">
+    <h3>Login email</h3>
+    <p class="account-note">The email you sign in with. Password-reset links are also sent here.</p>
+    <form method="post" action="/account/email">
+      <div class="field">
+        <label>Email</label>
+        <input type="email" name="email" value="<%= team.email || '' %>" autocomplete="username" required />
+      </div>
+      <button class="btn green" type="submit">Save email</button>
+    </form>
+  </section>
+
+  <section class="account-card">
+    <h3>Change password</h3>
+    <p class="account-note">Enter your current password, then choose a new one (at least 6 characters).</p>
+    <form method="post" action="/account/password">
+      <div class="field">
+        <label>Current password</label>
+        <input type="password" name="current" autocomplete="current-password" required />
+      </div>
+      <div class="field">
+        <label>New password</label>
+        <input type="password" name="password" autocomplete="new-password" minlength="6" required />
+      </div>
+      <div class="field">
+        <label>Confirm new password</label>
+        <input type="password" name="confirm" autocomplete="new-password" minlength="6" required />
+      </div>
+      <button class="btn green" type="submit">Change password</button>
+    </form>
+  </section>
+</div>
+
+<%- include('partials/footer') %>

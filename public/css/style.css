@@ -205,6 +205,19 @@ body{
 .offseason-panel .os-flash{background:#e7f6ec;border:2px solid #1f9d55;color:#12633a;
   padding:9px 12px;border-radius:8px;font-weight:600;margin:0 0 14px}
 .offseason-panel .os-flash.warn{background:#fdeceb;border-color:#b3261e;color:#8a1c16}
+/* Live salary cap meter */
+.os-capmeter{background:#f6f8fa;border:2px solid var(--ink);border-radius:10px;padding:12px 14px;margin:0 0 16px}
+.os-capmeter-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+.os-cap-label{font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.5px;font-weight:700;color:var(--navy)}
+.os-cap-figure{font-size:18px;color:var(--navy)}
+.os-cap-figure strong{font-size:22px}
+.os-cap-of{color:#5b6472;font-size:14px}
+.os-capbar{height:12px;background:#e3e6ea;border-radius:7px;overflow:hidden}
+.os-capbar-fill{height:100%;width:0;background:#1f9d55;border-radius:7px;transition:width .18s ease}
+.os-capmeter.over .os-capbar-fill{background:#b3261e}
+.os-capmeter.over .os-cap-figure strong{color:#b3261e}
+.os-cap-note{margin:8px 0 0;font-size:13px;color:#5b6472}
+.os-capmeter.over .os-cap-note{color:#b3261e;font-weight:600}
 .os-group{border-top:2px dashed #e3e6ea;padding:14px 0}
 .os-group h4{font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.5px;
   font-size:19px;margin:0 0 8px;color:var(--ink)}
@@ -327,9 +340,26 @@ img{max-width:100%}
 .member-login-box .os-flash.warn{background:#fdeceb;border-color:#b3261e;color:#8a1c16}
 .member-login-note{text-align:center;margin:0 0 14px;font-size:13px;color:#5b6472;line-height:1.4}
 
+/* My Account page */
+.account-wrap{max-width:520px;margin:0 auto}
+.account-h1{font-family:'Bangers',cursive;letter-spacing:1px;color:var(--navy);margin:0 0 2px;font-size:32px}
+.account-sub{margin:0 0 18px;font-weight:700;color:var(--red)}
+.account-card{background:#fff;border:3px solid var(--ink);border-radius:12px;padding:18px 18px 20px;margin:0 0 18px;
+  box-shadow:4px 4px 0 rgba(0,0,0,.08)}
+.account-card h3{margin:0 0 4px;font-family:'Barlow Condensed',sans-serif;font-size:22px;color:var(--navy)}
+.account-note{margin:0 0 14px;font-size:13px;color:#5b6472;line-height:1.4}
+.account-card .field{margin-bottom:12px}
+.account-card label{display:block;font-weight:700;font-size:13px;margin-bottom:4px;color:#33404f}
+.account-card input{width:100%;padding:10px 12px;border:2px solid var(--ink);border-radius:8px;font-size:15px}
+.account-wrap .os-flash{background:#e7f6ec;border:2px solid #1f9d55;color:#12633a;
+  padding:9px 12px;border-radius:8px;font-weight:600;font-size:14px;margin:0 0 16px}
+.account-wrap .os-flash.warn{background:#fdeceb;border-color:#b3261e;color:#8a1c16}
+
 /* Login state chip in the nav */
 .nav-login{margin-left:auto;display:flex;align-items:center;gap:8px}
 .nav-login .who{color:#fff;font-weight:600;font-size:13px;opacity:.9}
+.nav-login a.who-link{text-decoration:none;opacity:1;border-bottom:1px dotted rgba(255,255,255,.6)}
+.nav-login a.who-link:hover{border-bottom-color:#fff}
 .nav-login form{margin:0}
 .nav-login .logout{background:none;border:1.5px solid rgba(255,255,255,.6);color:#fff;
   border-radius:6px;padding:3px 10px;font-weight:700;font-size:12px;cursor:pointer}

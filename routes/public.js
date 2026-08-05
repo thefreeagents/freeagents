@@ -111,6 +111,50 @@ router.post('/reset/:token', (req, res) => {
   db.prepare('UPDATE teams SET password_hash = ?, reset_token = NULL, reset_expires = 0 WHERE id = ?').run(hash, team.id);
   res.redirect('/login?reset=1');
 });
+
+// ---- Account (a team owner manages their own login) -----------------------
+// Only a signed-in team owner has an account to manage. The commissioner edits
+// team logins from the admin console instead.
+function requireMember(req, res, next) {
+  if (req.session && req.session.teamId) {
+    const team = db.prepare('SELECT * FROM teams WHERE id = ?').get(req.session.teamId);
+    if (team) { req.member = team; return next(); }
+  }
+  return res.redirect(req.session && req.session.adminId ? '/admin' : '/login');
+}
+const acctBack = (res, kind, text) =>
+  res.redirect('/account?' + kind + '=' + encodeURIComponent(text));
+
+router.get('/account', requireMember, (req, res) => {
+  res.render('account', {
+    team: req.member, active: null,
+    msg: req.query.msg || null, err: req.query.err || null
+  });
+});
+
+router.post('/account/email', requireMember, (req, res) => {
+  const email = (req.body.email || '').trim().toLowerCase();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    return acctBack(res, 'err', 'Please enter a valid email address.');
+  }
+  const clash = db.prepare('SELECT id FROM teams WHERE lower(email) = ? AND id <> ?').get(email, req.member.id);
+  if (clash) return acctBack(res, 'err', 'That email is already used by another team.');
+  db.prepare('UPDATE teams SET email = ? WHERE id = ?').run(email, req.member.id);
+  acctBack(res, 'msg', 'Your login email has been updated.');
+});
+
+router.post('/account/password', requireMember, (req, res) => {
+  const cur = req.body.current || '';
+  const pw = req.body.password || '';
+  const pw2 = req.body.confirm || '';
+  if (!req.member.password_hash || !bcrypt.compareSync(cur, req.member.password_hash)) {
+    return acctBack(res, 'err', 'Your current password is incorrect.');
+  }
+  if (pw.length < 6) return acctBack(res, 'err', 'New password must be at least 6 characters.');
+  if (pw !== pw2) return acctBack(res, 'err', 'The two new passwords do not match.');
+  db.prepare('UPDATE teams SET password_hash = ? WHERE id = ?').run(bcrypt.hashSync(pw, 10), req.member.id);
+  acctBack(res, 'msg', 'Your password has been changed.');
+});
 // Team-owner logout (leaves any admin session untouched).
 router.post('/logout', (req, res) => {
   if (req.session) { delete req.session.teamId; delete req.session.teamName; }

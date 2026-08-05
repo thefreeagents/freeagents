@@ -33,7 +33,7 @@
           <span class="who">Commissioner</span>
           <form method="post" action="/admin/logout"><button class="logout" type="submit">Log out</button></form>
         <% } else if (typeof memberTeamName !== 'undefined' && memberTeamName) { %>
-          <span class="who"><%= memberTeamName %></span>
+          <a class="who who-link" href="/account" title="Manage my account"><%= memberTeamName %></a>
           <form method="post" action="/logout"><button class="logout" type="submit">Log out</button></form>
         <% } %>
       </li>
