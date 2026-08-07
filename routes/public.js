@@ -243,18 +243,8 @@ function osQuery(r) {
 // Fire-and-forget: a mail hiccup must never affect the submission itself.
 function notifyCommissioner(req, team, batchId) {
   try {
-    const rows = db.prepare(
-      'SELECT summary FROM transactions WHERE team_id = ? AND batch_id = ? AND undone = 0 ORDER BY id'
-    ).all(team.id, batchId);
-    if (!rows.length) return;
-    const lines = rows.map(r => '\u2022 ' + r.summary);
-    const subject = `[The Free Agents] ${team.name} submitted off-season moves`;
-    const text =
-      `${team.name} just submitted the following off-season ` +
-      `move${lines.length === 1 ? '' : 's'}:\n\n` +
-      lines.join('\n') +
-      `\n\nView the team: ${baseUrl(req)}/team/${team.slug}`;
-    mail.send({ to: mail.NOTIFY_TO, subject, text }).catch(() => {});
+    const msg = moves.submissionEmail(team.id, batchId, `${baseUrl(req)}/team/${team.slug}`);
+    if (msg) mail.send({ to: mail.NOTIFY_TO, subject: msg.subject, text: msg.text }).catch(() => {});
   } catch (e) {
     console.error('[notify] could not build submission email:', e.message);
   }

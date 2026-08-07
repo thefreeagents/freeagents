@@ -9,6 +9,7 @@ const espnSync = require('../services/espnSync');
 const { suggestSiteTeamId } = require('../services/espn');
 const offseason = require('../services/offseason');
 const moves = require('../services/offseasonMoves');
+const mail = require('../services/mail');
 
 const router = express.Router();
 
@@ -62,8 +63,28 @@ router.get('/', requireAdmin, (req, res) => {
   res.render('admin/dashboard', {
     teams,
     flash: req.query.saved,
-    offseasonOn: espnSync.getSetting('offseason_mode') === '1'
+    offseasonOn: espnSync.getSetting('offseason_mode') === '1',
+    mail: mail.config(),
+    mailOk: req.query.mailok || null,
+    mailErr: req.query.mailerr || null
   });
+});
+
+// Commissioner-only: send a one-off test email to confirm the SMTP settings are
+// working. Shows the real outcome (sent / skipped / error) back on the
+// dashboard, turning an otherwise-silent mail failure into a clear message.
+router.post('/mail-test', requireAdmin, async (req, res) => {
+  const to = (req.body.to || mail.NOTIFY_TO || '').trim();
+  const result = await mail.sendDetailed({
+    to,
+    subject: '[The Free Agents] Test email',
+    text: 'This is a test message from your league website. If you can read this, '
+      + 'email notifications are working. You can safely ignore it.'
+  });
+  const q = result.ok
+    ? 'mailok=' + encodeURIComponent(to)
+    : 'mailerr=' + encodeURIComponent(result.error || 'Unknown error.');
+  res.redirect('/admin?' + q);
 });
 
 // ---- New team -------------------------------------------------------------
@@ -241,8 +262,22 @@ router.post('/offseason/toggle', requireAdmin, (req, res) => {
 });
 
 // One "Submit" applies every chosen move at once (caps enforced together).
+// Sends the commissioner-notification email too, so a submission made from the
+// admin editor produces the same alert as one made from a team's own page.
 router.post('/teams/:id/moves/submit', requireAdmin, requireOffseason, (req, res) => {
-  backToTeamMsg(res, req.params.id, moves.submitMoves(req.params.id, req.body, { isAdmin: true }));
+  const result = moves.submitMoves(req.params.id, req.body, { isAdmin: true });
+  if (result.ok && !result.empty && result.batchId) {
+    try {
+      const team = db.prepare('SELECT slug FROM teams WHERE id = ?').get(req.params.id);
+      const base = (process.env.BASE_URL || (req.protocol + '://' + req.get('host'))).replace(/\/$/, '');
+      const viewUrl = team ? `${base}/team/${team.slug}` : '';
+      const msg = moves.submissionEmail(req.params.id, result.batchId, viewUrl);
+      if (msg) mail.send({ to: mail.NOTIFY_TO, subject: msg.subject, text: msg.text }).catch(() => {});
+    } catch (e) {
+      console.error('[notify] admin submit email failed:', e.message);
+    }
+  }
+  backToTeamMsg(res, req.params.id, result);
 });
 
 // One "Undo" reverses an entire submitted batch back to the prior state.

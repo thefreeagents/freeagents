@@ -19,6 +19,45 @@
 </div>
 
 <div class="card">
+  <h2>Email notifications</h2>
+  <p class="hint" style="margin-top:0">
+    When a team submits off-season moves you get an email. These come from the mail
+    account configured in Render. Use the button below to send yourself a test.
+  </p>
+
+  <% if (mailOk) { %>
+    <div class="flash">Test email sent to <%= mailOk %>. Check that inbox (and the spam folder).</div>
+  <% } else if (mailErr) { %>
+    <div class="flash warn">Couldn't send: <%= mailErr %></div>
+  <% } %>
+
+  <% if (mail.configured) { %>
+    <table class="teams" style="margin-bottom:14px">
+      <tbody>
+        <tr><td><strong>Status</strong></td><td>Configured &#10003;</td></tr>
+        <tr><td><strong>Mail server</strong></td><td><%= mail.host %>:<%= mail.port %> (<%= mail.secure ? 'SSL' : 'STARTTLS' %>)</td></tr>
+        <tr><td><strong>Sends as</strong></td><td><%= mail.from %></td></tr>
+        <tr><td><strong>Notices go to</strong></td><td><%= mail.notifyTo %></td></tr>
+      </tbody>
+    </table>
+  <% } else { %>
+    <div class="flash warn">
+      Email is <strong>not configured</strong>, so notices are being skipped. In Render &rarr;
+      Environment, set <code>SMTP_HOST</code>, <code>SMTP_PORT</code> (465), <code>SMTP_USER</code>,
+      <code>SMTP_PASS</code>, <code>MAIL_FROM</code> and <code>NOTIFY_EMAIL</code>, then redeploy.
+    </div>
+  <% } %>
+
+  <form method="post" action="/admin/mail-test">
+    <div class="field">
+      <label>Send a test email to</label>
+      <input type="email" name="to" value="<%= mail.notifyTo || '' %>" placeholder="you@example.com" required />
+    </div>
+    <button class="btn green" type="submit">Send test email</button>
+  </form>
+</div>
+
+<div class="card">
   <table class="teams">
     <thead><tr><th>Team</th><th>Owner</th><th>Championships</th><th>Updated</th><th></th></tr></thead>
     <tbody>

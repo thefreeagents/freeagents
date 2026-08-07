@@ -62,4 +62,37 @@ async function send({ to, subject, text, html }) {
   }
 }
 
-module.exports = { isConfigured, send, NOTIFY_TO, FROM };
+// A password-free snapshot of the current mail settings, for the admin
+// diagnostics card. `secure` reflects how we'll connect (implicit TLS on 465).
+function config() {
+  return {
+    configured: isConfigured(),
+    host: HOST,
+    port: PORT,
+    secure: PORT === 465,
+    user: USER,
+    from: FROM,
+    notifyTo: NOTIFY_TO,
+    hasPass: !!PASS
+  };
+}
+
+// Like send(), but returns a structured result instead of a bare boolean so the
+// admin "Send test email" button can show exactly what happened: skipped (not
+// configured / no recipient), sent, or failed with the mail server's message.
+async function sendDetailed({ to, subject, text, html }) {
+  if (!isConfigured()) {
+    return { ok: false, skipped: true, error: 'SMTP is not configured — set SMTP_HOST, SMTP_USER and SMTP_PASS in Render.' };
+  }
+  if (!to) {
+    return { ok: false, skipped: true, error: 'No recipient — set NOTIFY_EMAIL (or MAIL_FROM) in Render.' };
+  }
+  try {
+    await transport().sendMail({ from: FROM, to, subject, text, html });
+    return { ok: true, skipped: false, error: null };
+  } catch (e) {
+    return { ok: false, skipped: false, error: e.message };
+  }
+}
+
+module.exports = { isConfigured, send, sendDetailed, config, NOTIFY_TO, FROM };

@@ -413,6 +413,27 @@ function submitMoves(teamId, body, opts) {
   return { ok: true, batchId, applied: list.length };
 }
 
+// Build the commissioner-notification email for one submitted batch. Shared by
+// BOTH the public team page and the admin editor so a submission always produces
+// the same alert no matter who made it. Returns { subject, text } or null when
+// there is nothing to report (e.g. an empty or already-undone batch).
+function submissionEmail(teamId, batchId, viewUrl) {
+  const team = db.prepare('SELECT name, slug FROM teams WHERE id = ?').get(teamId);
+  if (!team) return null;
+  const rows = db.prepare(
+    'SELECT summary FROM transactions WHERE team_id = ? AND batch_id = ? AND undone = 0 ORDER BY id'
+  ).all(teamId, batchId);
+  if (!rows.length) return null;
+  const lines = rows.map(r => '\u2022 ' + r.summary);
+  const subject = `[The Free Agents] ${team.name} submitted off-season moves`;
+  const text =
+    `${team.name} just submitted the following off-season ` +
+    `move${lines.length === 1 ? '' : 's'}:\n\n` +
+    lines.join('\n') +
+    (viewUrl ? `\n\nView the team: ${viewUrl}` : '');
+  return { subject, text };
+}
+
 // Group audit-log rows (ordered newest-first) into submissions for display.
 // Each batch becomes one group with a single Undo; legacy pre-batch rows (no
 // batch_id) each stand alone. Returns groups newest-first, items chronological.
@@ -470,6 +491,7 @@ module.exports = {
   dropNcaac,
   dropContract,
   deadMoney,
+  submissionEmail,
   saveOffer,
   signPlayer,
   undo,
