@@ -169,6 +169,9 @@
     </div>
     <div class="os-capbar"><div class="os-capbar-fill" id="os-cap-fill"></div></div>
     <p class="os-cap-note" id="os-cap-note"></p>
+    <% if (typeof deadMoney !== 'undefined' && deadMoney) { %>
+      <p class="os-cap-dead">Includes <strong>$<%= deadMoney %></strong> in dead money from previously dropped Contract Players &mdash; that salary still counts against the cap this season.</p>
+    <% } %>
   </div>
 
   <!-- Empty shell form: batch inputs below are linked to it with form="osform-admin"

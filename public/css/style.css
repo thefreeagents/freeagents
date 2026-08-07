@@ -218,6 +218,8 @@ body{
 .os-capmeter.over .os-cap-figure strong{color:#b3261e}
 .os-cap-note{margin:8px 0 0;font-size:13px;color:#5b6472}
 .os-capmeter.over .os-cap-note{color:#b3261e;font-weight:600}
+.os-cap-dead{margin:8px 0 0;padding-top:8px;border-top:1px dashed #d6dae1;font-size:12.5px;color:#7a828f}
+.os-cap-dead strong{color:#5b6472}
 .os-group{border-top:2px dashed #e3e6ea;padding:14px 0}
 .os-group h4{font-family:'Barlow Condensed',sans-serif;text-transform:uppercase;letter-spacing:.5px;
   font-size:19px;margin:0 0 8px;color:var(--ink)}

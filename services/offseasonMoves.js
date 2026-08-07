@@ -140,15 +140,41 @@ function seasonPrice(contracts) {
   return found;
 }
 
-// 6) Drop a Contract Player entirely. A penalty equal to their current-season
-// price applies in league bookkeeping; it's noted in the summary for the log.
+// Parse a Contract Player's remaining obligations: every "YYYY: $N" line for the
+// current season and beyond, in year order. These are the years the drop penalty
+// (dead money) keeps applying, so we can spell them out — year by year — in the
+// drop's log entry and notification email for a permanent record.
+function remainingYears(contracts) {
+  const from = espnSync.currentSeason();
+  const out = [];
+  String(contracts || '').split(/\r?\n/).forEach((line) => {
+    const mm = line.match(/(\d{4})\s*:\s*\$?\s*(\d+)/);
+    if (mm) {
+      const yr = parseInt(mm[1], 10);
+      if (yr >= from) out.push({ year: yr, amount: parseInt(mm[2], 10) });
+    }
+  });
+  out.sort((a, b) => a.year - b.year);
+  return out;
+}
+
+// 6) Drop a Contract Player entirely. A dropped contract is still paid in full as
+// a penalty (dead money) — dropping only frees the roster slot. We record the
+// remaining per-year salary right in the log summary (which is also what the
+// notification email shows) so the future-year penalties are documented.
 function dropContract(teamId, pid) {
   const p = teamPlayer(teamId, pid);
   if (p && p.section === 'contract') {
-    const penalty = seasonPrice(p.contracts);
+    const years = remainingYears(p.contracts);
+    let penaltyText = '';
+    if (years.length) {
+      const schedule = years.map(y => `${y.year}: $${y.amount}`).join(', ');
+      const total = years.reduce((s, y) => s + y.amount, 0);
+      penaltyText = ` — dead-money penalty by year: ${schedule} (total $${total})`;
+    }
     db.prepare('DELETE FROM players WHERE id = ?').run(p.id);
     logTxn(teamId, 'drop_contract', p.name,
-      `Dropped ${p.name} from Contract Players${penalty ? ` (penalty ${penalty})` : ''}`,
+      `Dropped ${p.name} from Contract Players${penaltyText}`,
       { name: p.name, contracts: p.contracts, image: p.image, sort_order: p.sort_order });
   }
   return 'dropped_contract';
