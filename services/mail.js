@@ -22,6 +22,13 @@ const PASS = process.env.SMTP_PASS || '';
 const FROM = process.env.MAIL_FROM || USER;
 // Where off-season submission alerts go (the commissioner's inbox).
 const NOTIFY_TO = process.env.NOTIFY_EMAIL || FROM;
+// Shared-hosting mail servers (e.g. aplus) often present a certificate for their
+// own wildcard domain (*.aplus.net) rather than your custom SMTP_HOST, which
+// makes strict TLS verification fail with a "does not match certificate's
+// altnames" error. Setting SMTP_TLS_INSECURE=1 keeps the connection encrypted
+// but skips that hostname-on-certificate check so mail can go out. Prefer
+// pointing SMTP_HOST at a name the certificate actually covers when possible.
+const TLS_INSECURE = process.env.SMTP_TLS_INSECURE === '1';
 
 function isConfigured() {
   return !!(HOST && USER && PASS);
@@ -33,12 +40,15 @@ function transport() {
   // Required lazily so the app boots (and tests run) even when nodemailer is
   // not installed or SMTP is switched off.
   const nodemailer = require('nodemailer');
-  _transport = nodemailer.createTransport({
+  const opts = {
     host: HOST,
     port: PORT,
     secure: PORT === 465, // 465 = implicit TLS; 587 = STARTTLS
     auth: { user: USER, pass: PASS }
-  });
+  };
+  // Accept the provider's shared certificate when asked (see TLS_INSECURE note).
+  if (TLS_INSECURE) opts.tls = { rejectUnauthorized: false };
+  _transport = nodemailer.createTransport(opts);
   return _transport;
 }
 
@@ -73,7 +83,8 @@ function config() {
     user: USER,
     from: FROM,
     notifyTo: NOTIFY_TO,
-    hasPass: !!PASS
+    hasPass: !!PASS,
+    tlsInsecure: TLS_INSECURE
   };
 }
 

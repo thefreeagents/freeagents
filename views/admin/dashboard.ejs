@@ -38,6 +38,7 @@
         <tr><td><strong>Mail server</strong></td><td><%= mail.host %>:<%= mail.port %> (<%= mail.secure ? 'SSL' : 'STARTTLS' %>)</td></tr>
         <tr><td><strong>Sends as</strong></td><td><%= mail.from %></td></tr>
         <tr><td><strong>Notices go to</strong></td><td><%= mail.notifyTo %></td></tr>
+        <tr><td><strong>Certificate check</strong></td><td><%= mail.tlsInsecure ? 'relaxed (accepts shared cert)' : 'strict' %></td></tr>
       </tbody>
     </table>
   <% } else { %>
